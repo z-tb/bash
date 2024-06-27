@@ -2,6 +2,20 @@
 # user modify-able bashrc
 #
 #------------------------------------------------------------------
+# display git branch in prompt if cwd is a repo. color change if
+# modifications present
+#------------------------------------------------------------------
+display_git_branch()
+{
+   bcolor="\033[0;30;42m" # normally black on green. yellow on red if mods
+   test $(is_branch_modified) -eq 1 && bcolor="\033[1;33;41m"
+
+   b="`git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'`"
+   test ! -z "$b" &&  echo -e "$bcolor $b \033[0;00;0m"
+}
+
+
+#------------------------------------------------------------------
 # returns 1 if git branch in current dirctory has been modified
 #------------------------------------------------------------------
 is_branch_modified()
@@ -40,7 +54,7 @@ pkg_update_report()
 check_password_age() {
 
    # this won't work with some systems using AD auth since it requires sudo
-   `test -n `grep $(whoami) /etc/passwd &>/dev/null`` || echo "NO"
+   `test -n `grep $(whoami) /etc/passwd &>/dev/null`` || return
 
    # Constants
    age_warning_days=75
@@ -102,19 +116,38 @@ check_password_age() {
 }
 
 
-
 #------------------------------------------------------------------
-# Function to enable a colorful, multi-line bash prompt
-# add a function call below to enable it for every bash shell
+# enable a color prompt with git repo awareness
 #------------------------------------------------------------------
 enable_color_prompt() {
+    # ANSI color codes
+    local red_bg_yellow_fg='\[\e[1;33;41m\]'
+    local cyan_fg_black_bg='\[\e[0;36;40m\]'
+    local red_fg_black_bg='\[\e[0;31;40m\]'
+    local green_fg_black_bg='\[\e[1;32;40m\]'
+    local blue_bg_green_fg='\[\e[1;32;44m\]'
+    local red_fg_black_bg2='\[\e[1;31;40m\]'
+    local white_fg_black_bg='\[\e[0;37;40m\]'
+    local reset_color='\[\e[0;0;00m\]'
+
+    # prompt section colors
+    local username_color=$red_bg_yellow_fg
+    local hostname_color=$cyan_fg_black_bg
+    local directory_color=$blue_bg_green_fg
+    local time_date_color=$green_fg_black_bg
+    local bracket_color=$red_fg_black_bg2
+    local prompt_char_color=$white_fg_black_bg
+    local reset_color=$reset_color
+
     # color prompt
-    PCHAR='$'; UC='\[\e[1;33;41m\]'
-    if [ `id -u` -eq 0 ]; then PCHAR='#'; UC='\[\e[1;33;41m\]' ; else UC='\[\e[0;36;40m\]' ; fi
+    local prompt_char='$'
+    if [ `id -u` -eq 0 ]; then prompt_char='#'; else username_color=$cyan_fg_black_bg; fi
+
+    # formatting matters here; things are jammed to the left so the prompt stays left-justified in the consoel
     PS1="
-\[\e[1;31;40m\][\[\e[1;32;40m\]\$(date '+%I:%M')\[\e[1;32;40m\] \$(date '+%D')\$(display_git_branch)\[\e[1;31;40m\]]\[\e[0;0;00m\]
-\[\e[1;31;40m\][${UC}\u\[\e[0;31;40m\]@\[\e[0;36;40m\]\h\[\e[1;32;44m\] \w\[\e[1;31;40m\]]\[\e[0;0;00m\]
-\[\e[0;37;40m\]${PCHAR}\[\e[0;0;00m\] " 
+$bracket_color[$time_date_color\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)$bracket_color]$reset_color
+$bracket_color[$username_color\u$red_fg_black_bg@$hostname_color\h$directory_color \w$bracket_color]$reset_color
+$prompt_char_color$prompt_char$reset_color "
     export PS1
 }
 
@@ -142,11 +175,14 @@ alias glog='git log --pretty --oneline'
 # [docker]
 alias dcl='docker container ls -a'
 alias dil='docker image ls -a'
-
+# [system]
+alias dir="ls -lart --color=yes"
 
 # uncomment to run the update report on login
-pkg_update_report
+# pkg_update_report
 
 # uncomment to report on age of system password
-check_password_age
+# check_password_age
 
+# uncomment to enable color prompt
+# enable_color_prompt
