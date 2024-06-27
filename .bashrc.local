@@ -33,6 +33,70 @@ pkg_update_report()
    fi
 }
 
+#------------------------------------------------------------------
+# report on age of current password
+#------------------------------------------------------------------
+check_password_age() {
+   # Constants
+   age_warning_days=75
+   age_critical_days=90
+
+
+   local username="$1"
+   local verbose="$2" # pass -v to always report
+
+   # no username, assume the user running the function
+   test -z "$username" && username=$LOGNAME
+
+   # if -v passed as "$1", assume LOGNAME and verbose mode
+   if [ "$username" = "-v" ];then 
+      username=$LOGNAME
+      verbose="-v"
+   fi
+
+   # Get the password aging information using chage
+   local password_info=$(chage -l "$username" 2>/dev/null)
+
+   if [[ -n "$password_info" ]]; then
+
+       # Extract the last password change date
+       local last_change=$(echo "$password_info" | grep "Last password change" | awk -F ': ' '{print $2}')
+        
+       if [[ -n "$last_change" ]]; then
+           # Calculate the age of passwd in days
+           local current_date=$(date +%s)
+           local last_change_date=$(date -d "$last_change" +%s)
+           local age_seconds=$((current_date - last_change_date))
+           local age_days=$((age_seconds / 86400))  # 86400 seconds in a day
+ 
+           # Determine color based on age of pass
+           local color_code=""
+           if (( age_days > age_critical_days )); then
+               color_code="\033[91m"  # Red color
+           elif (( age_days > age_warning_days )); then
+               color_code="\033[93m"  # Yellow color
+           fi
+
+           # Determine if output should be printed
+           local output=false
+           if [[ "$verbose" == "-v" || age_days -gt $age_warning_days ]]; then
+               output=true
+           fi
+
+           # Print output if necessary
+           if [[ "$output" == true ]]; then
+               echo -e "${color_code}Current password age for user $username is approximately $age_days days.\033[0m"
+           fi
+
+       else
+           echo "Error: Failed to retrieve last password change date."
+       fi
+   else
+       echo "Error: User $username not found or unable to retrieve password aging information."
+   fi
+}
+
+
 
 #------------------------------------------------------------------
 # Function to enable a colorful, multi-line bash prompt
