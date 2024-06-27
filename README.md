@@ -2,7 +2,7 @@
 bash utilitiles I use often
 
 # .bashrc.local
-aliases, color prompt, some functions to make life easier. Place under `~/.bashrc.local` and give it 0644 or 0600 permissions:
+aliases, color prompt, some functions to make life easier. Place under `~/.bashrc.local` and give it 0644 or 0600 permissions. Has some debian-specific stuff you may need to modify such as the package update notification:
 ```bash
 chmod 0644 ~/.bashrc.local
 ```
