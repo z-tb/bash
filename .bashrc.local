@@ -35,8 +35,13 @@ pkg_update_report()
 
 #------------------------------------------------------------------
 # report on age of current password
+# only works with local users
 #------------------------------------------------------------------
 check_password_age() {
+
+   # this won't work with some systems using AD auth since it requires sudo
+   `test -n `grep $(whoami) /etc/passwd &>/dev/null`` || echo "NO"
+
    # Constants
    age_warning_days=75
    age_critical_days=90
