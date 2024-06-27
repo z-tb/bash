@@ -1,0 +1,83 @@
+#
+# user modify-able bashrc
+#
+#------------------------------------------------------------------
+# returns 1 if git branch in current dirctory has been modified
+#------------------------------------------------------------------
+is_branch_modified()
+{
+   status=0
+   test -n "`git diff 2>/dev/null`" && status=1
+   echo $status
+}
+
+#------------------------------------------------------------------
+# for use with gpull and other aliasse
+#------------------------------------------------------------------
+get_git_branch()
+{
+    git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'
+}
+
+#------------------------------------------------------------------
+# count the number of updates in /var/cache/apt/archives and report
+# this can be run by hand, or called from a script
+#------------------------------------------------------------------
+pkg_update_report() 
+{
+   local deb_count
+   deb_count=$(ls -1 /var/cache/apt/archives/*.deb 2>/dev/null | wc -l)
+
+   if [ "$deb_count" -gt 0 ]; then
+      echo -e "There are \e[92m$deb_count downloaded packages \e[0min the deb archive on this system.\e[0m"
+   fi
+}
+
+
+#------------------------------------------------------------------
+# Function to enable a colorful, multi-line bash prompt
+# add a function call below to enable it for every bash shell
+#------------------------------------------------------------------
+enable_color_prompt() {
+    # color prompt
+    PCHAR='$'; UC='\[\e[1;33;41m\]'
+    if [ `id -u` -eq 0 ]; then PCHAR='#'; UC='\[\e[1;33;41m\]' ; else UC='\[\e[0;36;40m\]' ; fi
+    PS1="
+\[\e[1;31;40m\][\[\e[1;32;40m\]\$(date '+%I:%M')\[\e[1;32;40m\] \$(date '+%D')\$(display_git_branch)\[\e[1;31;40m\]]\[\e[0;0;00m\]
+\[\e[1;31;40m\][${UC}\u\[\e[0;31;40m\]@\[\e[0;36;40m\]\h\[\e[1;32;44m\] \w\[\e[1;31;40m\]]\[\e[0;0;00m\]
+\[\e[0;37;40m\]${PCHAR}\[\e[0;0;00m\] " 
+    export PS1
+}
+
+
+#------------------------------------------------------------------
+# set path explicity to add $HOME/bin if it exists
+# this allows for custom user scripts to be placed in the user's path
+#------------------------------------------------------------------
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+test -d $HOME/bin && PATH=$PATH:$HOME/bin
+export PATH
+
+
+#------------------------------------------------------------------
+# aliases
+#------------------------------------------------------------------
+# [git]
+alias gbr="git branch -a"
+alias gco="git checkout"
+alias gst="git status -s"
+alias gls="git ls-tree --full-tree -r --name-only HEAD"
+alias gpull='git pull origin `get_git_branch`'
+alias gpush='git push origin `get_git_branch`; git push origin --tags'
+alias glog='git log --pretty --oneline'
+# [docker]
+alias dcl='docker container ls -a'
+alias dil='docker image ls -a'
+
+
+# uncomment to run the update report on login
+pkg_update_report
+
+# uncomment to report on age of system password
+check_password_age
+
