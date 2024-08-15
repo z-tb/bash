@@ -116,6 +116,36 @@ check_password_age() {
 }
 
 
+
+#------------------------------------------------------------------
+# create a tmux session for terminal sharing between logged-in users
+#------------------------------------------------------------------
+create_shared_tmux_session() {
+    
+    # Define color codes
+    local GREEN='\033[0;32m'
+    local YELLOW='\033[1;33m'
+    local CYAN='\033[0;36m'
+    local NC='\033[0m' # No Color
+
+    # Generate a random 4-digit number
+    local random_prefix=$(shuf -i 1000-9999 -n 1)
+
+    # Create the session name using the random prefix
+    local session_name="shared-${random_prefix}"
+
+    # Print message with color
+    echo -e "${CYAN}Starting new shared tmux session...${NC}"
+
+    # Create a new tmux session in detached mode
+    tmux new-session -d -s "$session_name"
+
+    # Print the command to connect to the shared session with color
+    echo -e "${YELLOW}To connect to the shared tmux session, use the following command:${NC}"
+    echo -e "${GREEN}tmux attach-session -t $session_name${NC}"
+}
+
+
 #------------------------------------------------------------------
 # enable a color prompt with git repo awareness
 #------------------------------------------------------------------
@@ -177,6 +207,7 @@ alias dcl='docker container ls -a'
 alias dil='docker image ls -a'
 # [system]
 alias dir="ls -lart --color=yes"
+alias tmush="create_shared_tmux_session"
 
 # uncomment to run the update report on login
 # pkg_update_report
