@@ -202,12 +202,15 @@ alias gls="git ls-tree --full-tree -r --name-only HEAD"
 alias gpull='git pull origin `get_git_branch`'
 alias gpush='git push origin `get_git_branch`; git push origin --tags'
 alias glog='git log --pretty --oneline'
+
 # [docker]
 alias dcl='docker container ls -a'
 alias dil='docker image ls -a'
+
 # [system]
 alias dir="ls -lart --color=yes"
 alias tmush="create_shared_tmux_session"
+alias shad='ssh-add ~/.ssh/*_{rsa,ed25519}'
 
 # uncomment to run the update report on login
 # pkg_update_report
