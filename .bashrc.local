@@ -213,6 +213,14 @@ function pcol() {
         "$LIGHT_CYAN"
     )
 
+    # if running in docker, add docker- to hostname and 🐳
+    HN_PREFIX=""
+    HN_SUFFIX=""
+    if [ -f /.dockerenv ]; then
+      HN_PREFIX="docker-"
+      HN_SUFFIX="🐳"
+    fi
+
     # Randomly choose colors for each component - run: pcol rand
     if [ "$1" == "rand" ]; then
         # Randomly choose colors for each component
@@ -224,12 +232,12 @@ function pcol() {
 
         # User-specific prompt components
         TIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}"
-        USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@docker-\h 🐳${RANDOM_COLOR_DIR} \w${RANDOM_COLOR_BRACKET}]${RESET}"
+        USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@${HN_PREFIX}\h ${HN_SUFFIX}${RANDOM_COLOR_DIR} \w${RANDOM_COLOR_BRACKET}]${RESET}"
         PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
     else
         # Default color scheme
         TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
-        USER_HOST="[${BOLD_CYAN}${UC}\u${BOLD_GREEN}@${BOLD_MAGENTA}docker-\h 🐳${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
+        USER_HOST="[${BOLD_CYAN}${UC}\u${BOLD_GREEN}@${BOLD_MAGENTA}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
         PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
     fi
 
@@ -295,5 +303,6 @@ alias sbl='sudo -i -u root /bin/bash --login'
 # uncomment to report on age of system password
 # check_password_age
 
-# uncomment to enable color prompt
-# pcol
+# uncomment to have a color prompt - you can $(set | grep -E '^PS1=' > $HOME/ps1) to save your current prompt for later
+# test ! -f ${HOME}/ps1 && pcol || { . ${HOME}/ps1; export PS1; }
+

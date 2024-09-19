@@ -34,6 +34,9 @@ hi statusline ctermbg=4 ctermfg=15 cterm=NONE " background color = blue, foregro
 " for Ansible YAML files which use 2 spaces for indentation
 autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab " set local tab options for YAML files
 
+" reset to default cursor color
+autocmd VimLeave * silent !echo -ne "\033]112\007"
+
 " Cursor highlight color
 " Use an orange cursor in insert mode
 let &t_SI = "\<Esc>]12;orange\x7"
@@ -41,17 +44,6 @@ let &t_SI = "\<Esc>]12;orange\x7"
 " Use a red cursor otherwise (in normal mode)
 let &t_EI = "\<Esc>]12;red\x7"
 silent !echo -ne "\033]12;red\007" " set initial cursor color to red
-
-" Reset cursor color when Vim exits
-if &term =~ "xterm\\|rxvt"
-  " Use an orange cursor in insert mode
-  let &t_SI = "\<Esc>]12;orange\x7"
-  " Use a red cursor otherwise
-  let &t_EI = "\<Esc>]12;red\x7"
-  silent !echo -ne "\033]12;red\007"
-  " Reset cursor when vim exits
-  autocmd VimLeave * silent !echo -ne "\033]12;?\007"
-endif
 
 " Set modeline to allow local options in files
 set modeline
