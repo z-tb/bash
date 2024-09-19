@@ -44,3 +44,18 @@ To ensure that `~/.bashrc` is sourced with every bash shell, try:
   ```bash
   [ -f ~/.bashrc ] && . ~/.bashrc
   ```
+
+# .vimrc
+The included `.vimrc` file can be symlinked to customize the default settings for Vim (Very Irritating, man).
+Key changes:
+* setting the background color to dark.
+* adjust tab size and indentation width to 3 spaces.
+* converting tabs to spaces.
+  * use this vim modeline in a Makefile if you need them.
+  * `vim: syntax=make ts=8 sw=8 noet )`
+* custom key mappings, allowing the F3 key to insert a formatted timestamp with the current date and user information. 
+* Title bar is set to display the current hostname and filename.
+* Status line shows the username, filename, and cursor position.
+* Automatic adjustments for YAML files to use 2 spaces for indentation
+* Custom cursor colors (orange in insert mode and red in normal mode)
+* Search result highlighting, and modeline support to allow local options in files. 

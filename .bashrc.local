@@ -33,11 +33,22 @@ get_git_branch()
     git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'
 }
 
+
+#------------------------------------------------------------------
+# show git branches both remote and local
+#------------------------------------------------------------------
+git_show_branches() {
+    remote_branches="$(git ls-remote --heads origin)"
+    git branch -a
+    echo -e "\033[38;5;202m+++ REMOTE BRANCHES +++\033[0m"
+    echo -e "\033[38;5;208m$remote_branches\033[0m"
+}
+
 #------------------------------------------------------------------
 # count the number of updates in /var/cache/apt/archives and report
 # this can be run by hand, or called from a script
 #------------------------------------------------------------------
-pkg_update_report() 
+pkg_update_report()
 {
    local deb_count
    deb_count=$(ls -1 /var/cache/apt/archives/*.deb 2>/dev/null | wc -l)
@@ -68,7 +79,7 @@ check_password_age() {
    test -z "$username" && username=$LOGNAME
 
    # if -v passed as "$1", assume LOGNAME and verbose mode
-   if [ "$username" = "-v" ];then 
+   if [ "$username" = "-v" ];then
       username=$LOGNAME
       verbose="-v"
    fi
@@ -80,14 +91,14 @@ check_password_age() {
 
        # Extract the last password change date
        local last_change=$(echo "$password_info" | grep "Last password change" | awk -F ': ' '{print $2}')
-        
+
        if [[ -n "$last_change" ]]; then
            # Calculate the age of passwd in days
            local current_date=$(date +%s)
            local last_change_date=$(date -d "$last_change" +%s)
            local age_seconds=$((current_date - last_change_date))
            local age_days=$((age_seconds / 86400))  # 86400 seconds in a day
- 
+
            # Determine color based on age of pass
            local color_code=""
            if (( age_days > age_critical_days )); then
@@ -120,8 +131,8 @@ check_password_age() {
 #------------------------------------------------------------------
 # create a tmux session for terminal sharing between logged-in users
 #------------------------------------------------------------------
-create_shared_tmux_session() {
-    
+tmux_share() {
+
     # Define color codes
     local GREEN='\033[0;32m'
     local YELLOW='\033[1;33m'
@@ -147,37 +158,83 @@ create_shared_tmux_session() {
 
 
 #------------------------------------------------------------------
-# enable a color prompt with git repo awareness
+# launch ssh-agent, add ssh keys to ssh-agent
 #------------------------------------------------------------------
-enable_color_prompt() {
-    # ANSI color codes
-    local red_bg_yellow_fg='\[\e[1;33;41m\]'
-    local cyan_fg_black_bg='\[\e[0;36;40m\]'
-    local red_fg_black_bg='\[\e[0;31;40m\]'
-    local green_fg_black_bg='\[\e[1;32;40m\]'
-    local blue_bg_green_fg='\[\e[1;32;44m\]'
-    local red_fg_black_bg2='\[\e[1;31;40m\]'
-    local white_fg_black_bg='\[\e[0;37;40m\]'
-    local reset_color='\[\e[0;0;00m\]'
+shad()
+{
+  eval "$(ssh-agent -s)"
+  ssh-add ~/.ssh/*_{rsa,ed25519}
+}
 
-    # prompt section colors
-    local username_color=$red_bg_yellow_fg
-    local hostname_color=$cyan_fg_black_bg
-    local directory_color=$blue_bg_green_fg
-    local time_date_color=$green_fg_black_bg
-    local bracket_color=$red_fg_black_bg2
-    local prompt_char_color=$white_fg_black_bg
-    local reset_color=$reset_color
 
-    # color prompt
-    local prompt_char='$'
-    if [ `id -u` -eq 0 ]; then prompt_char='#'; else username_color=$cyan_fg_black_bg; fi
 
-    # formatting matters here; things are jammed to the left so the prompt stays left-justified in the consoel
-    PS1="
-$bracket_color[$time_date_color\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)$bracket_color]$reset_color
-$bracket_color[$username_color\u$red_fg_black_bg@$hostname_color\h$directory_color \w$bracket_color]$reset_color
-$prompt_char_color$prompt_char$reset_color "
+#------------------------------------------------------------------
+# enable a color prompt with git repo awareness
+# temporarily change prompt color: pcol rand
+#------------------------------------------------------------------
+function pcol() {
+    PCHAR='$'; UC='\[\e[0;36;40m\]'
+    if [ `id -u` -eq 0 ]; then PCHAR='#'; UC='\[\e[1;33;41m\]'; fi
+
+    # Define color codes
+    BOLD_CYAN='\[\e[1;36;40m\]'
+    BOLD_PURPLE='\[\e[1;35;40m\]'
+    RESET='\[\e[0m\]'
+    BOLD_GREEN='\[\e[0;32;40m\]'
+    BOLD_MAGENTA='\[\e[1;35;40m\]'
+    BOLD_YELLOW='\[\e[1;33;40m\]'
+    LIGHT_GRAY='\[\e[0;37;40m\]'
+    BOLD_RED='\[\e[1;31;40m\]'
+    BOLD_BLUE='\[\e[1;34;40m\]'
+    BOLD_WHITE='\[\e[1;37;40m\]'
+    LIGHT_RED='\[\e[0;31;40m\]'
+    LIGHT_GREEN='\[\e[0;32;40m\]'
+    LIGHT_YELLOW='\[\e[0;33;40m\]'
+    LIGHT_BLUE='\[\e[0;34;40m\]'
+    LIGHT_MAGENTA='\[\e[0;35;40m\]'
+    LIGHT_CYAN='\[\e[0;36;40m\]'
+
+    # Create an array of colors
+    colors=(
+        "$BOLD_CYAN"
+        "$BOLD_PURPLE"
+        "$BOLD_GREEN"
+        "$BOLD_MAGENTA"
+        "$BOLD_YELLOW"
+        "$LIGHT_GRAY"
+        "$BOLD_RED"
+        "$BOLD_BLUE"
+        "$BOLD_WHITE"
+        "$LIGHT_RED"
+        "$LIGHT_GREEN"
+        "$LIGHT_YELLOW"
+        "$LIGHT_BLUE"
+        "$LIGHT_MAGENTA"
+        "$LIGHT_CYAN"
+    )
+
+    # Randomly choose colors for each component - run: pcol rand
+    if [ "$1" == "rand" ]; then
+        # Randomly choose colors for each component
+        RANDOM_COLOR_BRACKET=${colors[RANDOM % ${#colors[@]}]}
+        RANDOM_COLOR_DATE=${colors[RANDOM % ${#colors[@]}]}
+        RANDOM_COLOR_USER=${colors[RANDOM % ${#colors[@]}]}
+        RANDOM_COLOR_HOST=${colors[RANDOM % ${#colors[@]}]}
+        RANDOM_COLOR_DIR=${colors[RANDOM % ${#colors[@]}]}
+
+        # User-specific prompt components
+        TIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}"
+        USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@docker-\h 🐳${RANDOM_COLOR_DIR} \w${RANDOM_COLOR_BRACKET}]${RESET}"
+        PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
+    else
+        # Default color scheme
+        TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
+        USER_HOST="[${BOLD_CYAN}${UC}\u${BOLD_GREEN}@${BOLD_MAGENTA}docker-\h 🐳${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
+        PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
+    fi
+
+    # Combine components into multi-line PS1 without escapes
+    PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
     export PS1
 }
 
@@ -190,12 +247,29 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 test -d $HOME/bin && PATH=$PATH:$HOME/bin
 export PATH
 
+#------------------------------------------------------------------
+# ubuntu default is nano
+#------------------------------------------------------------------
+# use vim or nano for things like cron and git commits
+export EDITOR=vim
+
+#------------------------------------------------------------------
+# disable caps lock as I always inadvertently hit it when entering masked passwords
+# also see: xmodmap ~/.Xmodmap
+#------------------------------------------------------------------
+/usr/bin/setxkbmap -option ctrl:nocaps
+setxkbmap -option ctrl:nocaps
 
 #------------------------------------------------------------------
 # aliases
 #------------------------------------------------------------------
+# [ssh]
+# a shortcut for use with temporary hosts
+alias sshoi='ssh -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
+
+
 # [git]
-alias gbr="git branch -a"
+alias gbr="git_show_branches"
 alias gco="git checkout"
 alias gst="git status -s"
 alias gls="git ls-tree --full-tree -r --name-only HEAD"
@@ -209,8 +283,11 @@ alias dil='docker image ls -a'
 
 # [system]
 alias dir="ls -lart --color=yes"
-alias tmush="create_shared_tmux_session"
-alias shad='ssh-add ~/.ssh/*_{rsa,ed25519}'
+alias tmush="tmux_share"
+# root login with ENV initialized
+alias sbl='sudo -i -u root /bin/bash --login'
+
+# -------------------------------------------------------------------
 
 # uncomment to run the update report on login
 # pkg_update_report
@@ -219,4 +296,4 @@ alias shad='ssh-add ~/.ssh/*_{rsa,ed25519}'
 # check_password_age
 
 # uncomment to enable color prompt
-# enable_color_prompt
+# pcol
