@@ -303,6 +303,6 @@ alias sbl='sudo -i -u root /bin/bash --login'
 # uncomment to report on age of system password
 # check_password_age
 
-# uncomment to have a color prompt - you can $(set | grep -E '^PS1=' > $HOME/ps1) to save your current prompt for later
-# test ! -f ${HOME}/ps1 && pcol || { . ${HOME}/ps1; export PS1; }
+# uncomment to have a color prompt
+# pcol
 
