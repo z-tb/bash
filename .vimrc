@@ -43,11 +43,18 @@ let &t_EI = "\<Esc>]12;red\x7"
 silent !echo -ne "\033]12;red\007" " set initial cursor color to red
 
 " Reset cursor color when Vim exits
-autocmd VimLeave * silent !echo -ne "\033]112\007" " reset to default cursor color
+if &term =~ "xterm\\|rxvt"
+  " Use an orange cursor in insert mode
+  let &t_SI = "\<Esc>]12;orange\x7"
+  " Use a red cursor otherwise
+  let &t_EI = "\<Esc>]12;red\x7"
+  silent !echo -ne "\033]12;red\007"
+  " Reset cursor when vim exits
+  autocmd VimLeave * silent !echo -ne "\033]12;?\007"
+endif
 
 " Set modeline to allow local options in files
 set modeline
 
 " Highlight search results
 set hlsearch
-
