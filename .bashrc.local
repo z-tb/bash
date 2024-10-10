@@ -259,12 +259,12 @@ function pcol() {
             echo "LIGHT_CYAN='$LIGHT_CYAN'"
             echo "colors=( \"\${BOLD_CYAN}\" \"\${BOLD_PURPLE}\" \"\${BOLD_GREEN}\" \"\${BOLD_MAGENTA}\" \"\${BOLD_YELLOW}\" \"\${LIGHT_GRAY}\" \"\${BOLD_RED}\" \"\${BOLD_BLUE}\" \"\${BOLD_WHITE}\" \"\${LIGHT_RED}\" \"\${LIGHT_GREEN}\" \"\${LIGHT_YELLOW}\" \"\${LIGHT_BLUE}\" \"\${LIGHT_MAGENTA}\" \"\${LIGHT_CYAN}\" )"
             echo "export PS1=\"\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} \""
-        } > ~/ps1.rand
+        } > ~/ps1.rename_me
     else
         # Default color scheme
         TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
         USER_HOST="[${BOLD_CYAN}\u@${BOLD_GREEN}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
-        PCHAR="${LIGHT_GRAY}\\$${RESET}"
+        PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
 
         # Combine components into multi-line PS1 without escapes
         PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
