@@ -173,26 +173,23 @@ shad()
 # temporarily change prompt color: pcol rand
 #------------------------------------------------------------------
 function pcol() {
-    PCHAR='$'; UC='\[\e[0;36;40m\]'
-    if [ `id -u` -eq 0 ]; then PCHAR='#'; UC='\[\e[1;33;41m\]'; fi
-
-    # Define color codes
-    BOLD_CYAN='\[\e[1;36;40m\]'
-    BOLD_PURPLE='\[\e[1;35;40m\]'
-    RESET='\[\e[0m\]'
-    BOLD_GREEN='\[\e[0;32;40m\]'
-    BOLD_MAGENTA='\[\e[1;35;40m\]'
-    BOLD_YELLOW='\[\e[1;33;40m\]'
-    LIGHT_GRAY='\[\e[0;37;40m\]'
-    BOLD_RED='\[\e[1;31;40m\]'
-    BOLD_BLUE='\[\e[1;34;40m\]'
-    BOLD_WHITE='\[\e[1;37;40m\]'
-    LIGHT_RED='\[\e[0;31;40m\]'
-    LIGHT_GREEN='\[\e[0;32;40m\]'
-    LIGHT_YELLOW='\[\e[0;33;40m\]'
-    LIGHT_BLUE='\[\e[0;34;40m\]'
-    LIGHT_MAGENTA='\[\e[0;35;40m\]'
-    LIGHT_CYAN='\[\e[0;36;40m\]'
+    # Define color codes without escaping for the array
+    BOLD_CYAN='\e[1;36;40m'
+    BOLD_PURPLE='\e[1;35;40m'
+    RESET='\e[0m'
+    BOLD_GREEN='\e[0;32;40m'
+    BOLD_MAGENTA='\e[1;35;40m'
+    BOLD_YELLOW='\e[1;33;40m'
+    LIGHT_GRAY='\e[0;37;40m'
+    BOLD_RED='\e[1;31;40m'
+    BOLD_BLUE='\e[1;34;40m'
+    BOLD_WHITE='\e[1;37;40m'
+    LIGHT_RED='\e[0;31;40m'
+    LIGHT_GREEN='\e[0;32;40m'
+    LIGHT_YELLOW='\e[0;33;40m'
+    LIGHT_BLUE='\e[0;34;40m'
+    LIGHT_MAGENTA='\e[0;35;40m'
+    LIGHT_CYAN='\e[0;36;40m'
 
     # Create an array of colors
     colors=(
@@ -233,16 +230,47 @@ function pcol() {
         # User-specific prompt components
         TIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}"
         USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@${HN_PREFIX}\h ${HN_SUFFIX}${RANDOM_COLOR_DIR} \w${RANDOM_COLOR_BRACKET}]${RESET}"
+        PCHAR='\\$'  # Character for prompt
         PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
+
+        # Combine components into PS1
+        PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
+
+        # Write the PS1 configuration to ~/ps1.rename_me
+        {
+            # reset for export to file
+            TIME_DATE='${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '\''+%I:%M'\'') \$(date '\''+%D'\'')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}'
+
+            echo "BOLD_CYAN='$BOLD_CYAN'"
+            echo "BOLD_PURPLE='$BOLD_PURPLE'"
+            echo "RESET='$RESET'"
+            echo "BOLD_GREEN='$BOLD_GREEN'"
+            echo "BOLD_MAGENTA='$BOLD_MAGENTA'"
+            echo "BOLD_YELLOW='$BOLD_YELLOW'"
+            echo "LIGHT_GRAY='$LIGHT_GRAY'"
+            echo "BOLD_RED='$BOLD_RED'"
+            echo "BOLD_BLUE='$BOLD_BLUE'"
+            echo "BOLD_WHITE='$BOLD_WHITE'"
+            echo "LIGHT_RED='$LIGHT_RED'"
+            echo "LIGHT_GREEN='$LIGHT_GREEN'"
+            echo "LIGHT_YELLOW='$LIGHT_YELLOW'"
+            echo "LIGHT_BLUE='$LIGHT_BLUE'"
+            echo "LIGHT_MAGENTA='$LIGHT_MAGENTA'"
+            echo "LIGHT_CYAN='$LIGHT_CYAN'"
+            echo "colors=( \"\${BOLD_CYAN}\" \"\${BOLD_PURPLE}\" \"\${BOLD_GREEN}\" \"\${BOLD_MAGENTA}\" \"\${BOLD_YELLOW}\" \"\${LIGHT_GRAY}\" \"\${BOLD_RED}\" \"\${BOLD_BLUE}\" \"\${BOLD_WHITE}\" \"\${LIGHT_RED}\" \"\${LIGHT_GREEN}\" \"\${LIGHT_YELLOW}\" \"\${LIGHT_BLUE}\" \"\${LIGHT_MAGENTA}\" \"\${LIGHT_CYAN}\" )"
+            echo "export PS1=\"\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} \""
+        } > ~/ps1.rand
     else
         # Default color scheme
         TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
-        USER_HOST="[${BOLD_CYAN}${UC}\u${BOLD_GREEN}@${BOLD_MAGENTA}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
-        PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
+        USER_HOST="[${BOLD_CYAN}\u@${BOLD_GREEN}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
+        PCHAR="${LIGHT_GRAY}\\$${RESET}"
+
+        # Combine components into multi-line PS1 without escapes
+        PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
     fi
 
-    # Combine components into multi-line PS1 without escapes
-    PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
+    # Export the PS1 variable
     export PS1
 }
 
@@ -305,4 +333,7 @@ alias sbl='sudo -i -u root /bin/bash --login'
 
 # uncomment to have a color prompt
 # pcol
+
+# uncomment if you renamed ~/ps1.rename_me to ~/ps1 after running 'pcol rand'
+# test -f ~/ps1 && { . ~/ps1; export PS1; } ||  pcol
 
