@@ -218,6 +218,11 @@ function pcol() {
       HN_SUFFIX="🐳"
     fi
 
+    # root should get '#'
+    # Character for prompt
+    test `id -u` -eq 0 && PROMPT_CHAR='#' || PROMPT_CHAR='\$'
+    PCHAR="${LIGHT_GRAY}${PROMPT_CHAR}${RESET}"
+
     # Randomly choose colors for each component - run: pcol rand
     if [ "$1" == "rand" ]; then
         # Randomly choose colors for each component
@@ -230,8 +235,6 @@ function pcol() {
         # User-specific prompt components
         TIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}"
         USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@${HN_PREFIX}\h ${HN_SUFFIX}${RANDOM_COLOR_DIR} \w${RANDOM_COLOR_BRACKET}]${RESET}"
-        PCHAR='\\$'  # Character for prompt
-        PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
 
         # Combine components into PS1
         PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
@@ -264,7 +267,6 @@ function pcol() {
         # Default color scheme
         TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
         USER_HOST="[${BOLD_CYAN}\u@${BOLD_GREEN}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
-        PCHAR="${LIGHT_GRAY}${PCHAR}${RESET}"
 
         # Combine components into multi-line PS1 without escapes
         PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
