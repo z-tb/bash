@@ -8,12 +8,10 @@
 display_git_branch()
 {
    bcolor="\033[0;30;42m" # normally black on green. yellow on red if mods
-   test $(is_branch_modified) -eq 1 && bcolor="\033[1;33;41m"
-
+   test $(is_branch_modified) -eq 1 && bcolor="\033[1;37;41m"
    b="`git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'`"
-   test ! -z "$b" &&  echo -e "$bcolor $b \033[0;00;0m"
+   test ! -z "$b" &&  echo -e "${bcolor} ⎇ ${b} \033[0;00;0m"
 }
-
 
 #------------------------------------------------------------------
 # returns 1 if git branch in current dirctory has been modified
@@ -223,6 +221,13 @@ function pcol() {
     test `id -u` -eq 0 && PROMPT_CHAR='#' || PROMPT_CHAR='\$'
     PCHAR="${LIGHT_GRAY}${PROMPT_CHAR}${RESET}"
 
+    # Default color scheme
+    TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
+    USER_HOST="[${BOLD_CYAN}\u@${BOLD_GREEN}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW}\w${BOLD_CYAN}]${RESET}"
+
+    # Combine components into multi-line PS1 without escapes
+    PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
+
     # Randomly choose colors for each component - run: pcol rand
     if [ "$1" == "rand" ]; then
         # Randomly choose colors for each component
@@ -234,16 +239,17 @@ function pcol() {
 
         # User-specific prompt components
         TIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}"
-        USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@${HN_PREFIX}\h ${HN_SUFFIX}${RANDOM_COLOR_DIR} \w${RANDOM_COLOR_BRACKET}]${RESET}"
+        USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@${HN_PREFIX}\h ${HN_SUFFIX}${RANDOM_COLOR_DIR}\w${RANDOM_COLOR_BRACKET}]${RESET}"
+
+        # for writing to the file, escape the functions
+        FTIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}"'\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)'"${RANDOM_COLOR_BRACKET}]${RESET}"
 
         # Combine components into PS1
         PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
 
         # Write the PS1 configuration to ~/ps1.rename_me
         {
-            # reset for export to file
-            TIME_DATE='${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '\''+%I:%M'\'') \$(date '\''+%D'\'')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}'
-
+            # export to file
             echo "BOLD_CYAN='$BOLD_CYAN'"
             echo "BOLD_PURPLE='$BOLD_PURPLE'"
             echo "RESET='$RESET'"
@@ -261,15 +267,8 @@ function pcol() {
             echo "LIGHT_MAGENTA='$LIGHT_MAGENTA'"
             echo "LIGHT_CYAN='$LIGHT_CYAN'"
             echo "colors=( \"\${BOLD_CYAN}\" \"\${BOLD_PURPLE}\" \"\${BOLD_GREEN}\" \"\${BOLD_MAGENTA}\" \"\${BOLD_YELLOW}\" \"\${LIGHT_GRAY}\" \"\${BOLD_RED}\" \"\${BOLD_BLUE}\" \"\${BOLD_WHITE}\" \"\${LIGHT_RED}\" \"\${LIGHT_GREEN}\" \"\${LIGHT_YELLOW}\" \"\${LIGHT_BLUE}\" \"\${LIGHT_MAGENTA}\" \"\${LIGHT_CYAN}\" )"
-            echo "export PS1=\"\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} \""
+            echo "export PS1=\"\n${FTIME_DATE}\n${USER_HOST}\n${PCHAR} \""
         } > ~/ps1.rename_me
-    else
-        # Default color scheme
-        TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
-        USER_HOST="[${BOLD_CYAN}\u@${BOLD_GREEN}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW} \w${BOLD_CYAN}]${RESET}"
-
-        # Combine components into multi-line PS1 without escapes
-        PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
     fi
 
     # Export the PS1 variable
