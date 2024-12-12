@@ -10,7 +10,7 @@ display_git_branch()
    bcolor="\033[0;30;42m" # normally black on green. yellow on red if mods
    test $(is_branch_modified) -eq 1 && bcolor="\033[1;37;41m"
    b="`git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'`"
-   test ! -z "$b" &&  echo -e "${bcolor} ⎇ ${b} \033[0;00;0m"
+   test ! -z "$b" &&  echo -e "${bcolor} ${b} ⎇ \033[0;00;0m"
 }
 
 #------------------------------------------------------------------
@@ -326,22 +326,15 @@ alias sbl='sudo -i -u root /bin/bash --login'
 
 # -------------------------------------------------------------------
 
-# your timezone - run tzselect command if you don't know
-# export TZ="America/Chicago"
-# export TZ="America/New_York"
-# export TZ='America/Detroit'
-# export TZ='America/Denver'
-# export TZ='America/Los_Angeles'
-
 # uncomment to run the update report on login
-# pkg_update_report
+pkg_update_report
 
 # uncomment to report on age of system password
-# check_password_age
+check_password_age
 
 # uncomment to have a color prompt
-# pcol
+pcol
 
 # uncomment if you renamed ~/ps1.rename_me to ~/ps1 after running 'pcol rand'
-# test -f ~/ps1 && { . ~/ps1; export PS1; } ||  pcol
+test -f ~/ps1 && { . ~/ps1; export PS1; } ||  pcol
 
