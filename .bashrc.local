@@ -10,7 +10,7 @@ display_git_branch()
    bcolor="\033[0;30;42m" # normally black on green. yellow on red if mods
    test $(is_branch_modified) -eq 1 && bcolor="\033[1;37;41m"
    b="`git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'`"
-   test ! -z "$b" &&  echo -e "${bcolor} ${b} ⎇ \033[0;00;0m"
+   test ! -z "$b" &&  echo -e "${bcolor} ⎇ ${b} \033[0;00;0m"
 }
 
 #------------------------------------------------------------------
@@ -294,8 +294,8 @@ export EDITOR=vim
 # disable caps lock as I always inadvertently hit it when entering masked passwords
 # also see: xmodmap ~/.Xmodmap
 #------------------------------------------------------------------
-/usr/bin/setxkbmap -option ctrl:nocaps
-setxkbmap -option ctrl:nocaps
+#/usr/bin/setxkbmap -option ctrl:nocaps
+#setxkbmap -option ctrl:nocaps
 
 #------------------------------------------------------------------
 # aliases
@@ -325,6 +325,13 @@ alias tmush="tmux_share"
 alias sbl='sudo -i -u root /bin/bash --login'
 
 # -------------------------------------------------------------------
+
+# your timezone - run tzselect command if you don't know
+export TZ="America/Chicago"
+# export TZ="America/New_York"
+# export TZ='America/Detroit'
+# export TZ='America/Denver'
+# export TZ='America/Los_Angeles'
 
 # uncomment to run the update report on login
 pkg_update_report
