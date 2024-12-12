@@ -326,6 +326,13 @@ alias sbl='sudo -i -u root /bin/bash --login'
 
 # -------------------------------------------------------------------
 
+# your timezone - run tzselect command if you don't know
+# export TZ="America/Chicago"
+# export TZ="America/New_York"
+# export TZ='America/Detroit'
+# export TZ='America/Denver'
+# export TZ='America/Los_Angeles'
+
 # uncomment to run the update report on login
 # pkg_update_report
 
