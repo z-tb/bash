@@ -293,9 +293,11 @@ export EDITOR=vim
 #------------------------------------------------------------------
 # disable caps lock as I always inadvertently hit it when entering masked passwords
 # also see: xmodmap ~/.Xmodmap
+# NOTE: causes error message over ssh - only applies to X session/terminal
 #------------------------------------------------------------------
-/usr/bin/setxkbmap -option ctrl:nocaps
-setxkbmap -option ctrl:nocaps
+if [ -n "$DISPLAY" ]; then
+   /usr/bin/setxkbmap -option ctrl:nocaps
+fi
 
 #------------------------------------------------------------------
 # aliases
