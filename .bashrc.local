@@ -295,12 +295,9 @@ export EDITOR=vim
 # also see: xmodmap ~/.Xmodmap
 # NOTE: causes error message over ssh - only applies to X session/terminal
 #------------------------------------------------------------------
-<<<<<<< HEAD
-=======
 if [ -n "$DISPLAY" ]; then
    /usr/bin/setxkbmap -option ctrl:nocaps
 fi
->>>>>>> main
 
 #------------------------------------------------------------------
 # aliases
