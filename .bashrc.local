@@ -1,20 +1,31 @@
 #
 # user modify-able bashrc
 #
+
 #------------------------------------------------------------------
-# display git branch in prompt if cwd is a repo. color change if
-# modifications present
+# display git branch in prompt if cwd is a repo. color change if 
+# modifications present. use scroll emoji if git notes are present
 #------------------------------------------------------------------
 display_git_branch()
 {
    bcolor="\033[0;30;42m" # normally black on green. yellow on red if mods
-   test $(is_branch_modified) -eq 1 && bcolor="\033[1;37;41m"
+   test $(is_branch_modified) -eq 1 && bcolor="\033[1;33;41m"
+
    b="`git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'`"
-   test ! -z "$b" &&  echo -e "${bcolor} ⎇ ${b} \033[0;00;0m"
+
+   # Check if there are notes in the repository
+   notes_present=$(git notes list 2> /dev/null | wc -l)
+   note_indicator=""
+   if [ "$notes_present" -gt 0 ]; then
+       note_indicator="📜"
+   fi
+
+   test ! -z "$b" && echo -e "\033[1;0;40m $bcolor" ⭠ "$note_indicator$b\033[0;00;0m"
 }
 
+
 #------------------------------------------------------------------
-# returns 1 if git branch in current dirctory has been modified
+# returns 1 if git branch is modified/dirty
 #------------------------------------------------------------------
 is_branch_modified()
 {
@@ -23,12 +34,131 @@ is_branch_modified()
    echo $status
 }
 
+
 #------------------------------------------------------------------
-# for use with gpull and other aliasse
+# for use with gpull/PS1/aliasse
 #------------------------------------------------------------------
 get_git_branch()
 {
     git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'
+}
+
+
+#------------------------------------------------------------------
+# pushd/popd - determine if directory stack has more than one entry
+#------------------------------------------------------------------
+get_dirstack_indicator() {
+    if [ ${#DIRSTACK[@]} -gt 1 ]; then
+        echo "📍"
+    else
+        echo ""
+    fi
+}
+
+#------------------------------------------------------------------
+# show success/fail status of last shell command
+#------------------------------------------------------------------
+display_last_command_status() {
+   
+   if [ $LAST_EXIT_STATUS -eq 0 ]; then
+      echo -e '\033[1;32;40m✔ \033[0m'
+   else
+      echo -e '\033[1;31;40m✗ \033[0m'
+   fi
+}
+
+#------------------------------------------------------------------
+# fancy prompt - use emojis for pushd/popd
+#------------------------------------------------------------------
+prom() {
+    # Create a prompt command to capture exit status
+    PROMPT_COMMAND='LAST_EXIT_STATUS=$?' 
+
+    # Define colors for various parts of prompt
+    #   Use existing color variables if defined, otherwise use defaults
+    BCOLOR=${BCOLOR:-"\[\033[1;36;40m\]"}   # Light cyan on black
+    TDCOLOR=${TDCOLOR:-"\[\033[0;31;40m\]"}  # Red on black
+    HCOLOR=${HCOLOR:-"\[\033[0;36;40m\]"}   # Dark cyan on black
+    PWDCOLOR=${PWDCOLOR:-"\[\033[1;36;40m\]"} # Light cyan on black
+    SYSCOLOR=${SYSCOLOR:-"\[\033[1;34;40m\]"} # Blue on black for system separator
+    RESET="\[\033[0m\]"          # Reset to default
+
+    # prompt character based on user
+    if [ $EUID -eq 0 ]; then
+        local USERCOLOR="\[\033[1;33;41m\]"  # Yellow on red background for root
+        local PROMPT_CHAR="#"
+    else
+        local USERCOLOR="\[\033[0;37;40m\]"  # White on black for regular user
+        local PROMPT_CHAR="$"
+    fi
+
+    # Set PS1 with initial value
+    # First line: [time dirstack_indicator git_status]
+    PS1="${BCOLOR}[${RESET}${TDCOLOR}\$(date '+%I:%M %m/%d/%y')${RESET}\$(display_git_branch)${BCOLOR}]${RESET}\n"
+
+    # Second line: [user@hostname pwd]
+    PS1+="${BCOLOR}[${RESET}\$(display_last_command_status)${USERCOLOR}\u${RESET}${SYSCOLOR}\$(is_docker '@')${HCOLOR}\h ${RESET}${PWDCOLOR}\w${RESET}${BCOLOR}\$(get_dirstack_indicator)]${RESET}\n"
+
+    # Third line: prompt character
+    PS1+="${PROMPT_CHAR} "
+}
+
+
+#------------------------------------------------------------------
+# if in a docker container, return the whale icon, otherwise whatever was passed
+#------------------------------------------------------------------
+is_docker()
+{
+    sys_sep="$1"
+    if [ -f /.dockerenv ]; then
+      sys_sep='🐳'
+    fi
+    echo $sys_sep
+}
+
+
+#------------------------------------------------------------------
+# randomize PS1 colors and save for later, if desired
+#------------------------------------------------------------------
+pcol_rand() {
+ # Function to generate a random color code
+    gen_random_color() {
+        local style=$1     # Style: 0=normal, 1=bold
+        local fg=$((RANDOM % 8 + 30))  # Random foreground (30-37)
+        echo "${style};${fg};40"       # Always using black background (40)
+    }
+
+    # Generate random colors for each part
+    local new_bcolor=$(gen_random_color 1)   # Bold color for brackets
+    local new_tdcolor=$(gen_random_color 0)  # Normal color for time/date
+    local new_hcolor=$(gen_random_color 0)   # Normal color for hostname
+    local new_pwdcolor=$(gen_random_color 1) # Bold color for current directory
+    local new_syscolor=$(gen_random_color 1) # Bold color for system separator
+
+    # Create the ps1.rename_me file with just the color definitions
+    cat > ~/ps1.rename_me << EOF
+# PS1 color settings - generated by pcol_rand() on $(date)
+# Source this file to apply these colors to your prompt
+
+# Unset any existing color variables first
+unset BCOLOR TDCOLOR HCOLOR PWDCOLOR SYSCOLOR
+
+# Color definitions for PS1 prompt
+export BCOLOR="\[\033[${new_bcolor}m\]"   # Random color for brackets
+export TDCOLOR="\[\033[${new_tdcolor}m\]"  # Random color for time/date
+export HCOLOR="\[\033[${new_hcolor}m\]"   # Random color for hostname
+export PWDCOLOR="\[\033[${new_pwdcolor}m\]" # Random color for current directory
+export SYSCOLOR="\[\033[${new_syscolor}m\]" # Random color for system separator
+
+# Call prompt function to apply the new colors
+prom
+EOF
+
+source ~/ps1.rename_me
+
+    echo "Randomized color settings saved to ~/ps1.rename_me"
+    echo "To apply, run: source ~/ps1.rename_me"
+    echo "To apply automatically at login, rename this file to ~/ps1"
 }
 
 
@@ -63,7 +193,7 @@ pkg_update_report()
 check_password_age() {
 
    # this won't work with some systems using AD auth since it requires sudo
-   `test -n `grep $(whoami) /etc/passwd &>/dev/null`` || return
+   test -n $(grep $(whoami) /etc/passwd &>/dev/null) || return
 
    # Constants
    age_warning_days=75
@@ -157,123 +287,32 @@ tmux_share() {
 
 #------------------------------------------------------------------
 # launch ssh-agent, add ssh keys to ssh-agent
+# *shad already defined in /etc/bashrc
 #------------------------------------------------------------------
-shad()
+shadd()
 {
-  eval "$(ssh-agent -s)"
-  ssh-add ~/.ssh/*_{rsa,ed25519}
+   test -z "$(find ~/.ssh -type f \( -iname '*rsa*' -o -iname '*ed25519*' \) ! -iname '*.pub')" && return
+   eval "$(ssh-agent -s)"
+   ssh-add ~/.ssh/*_{rsa,ed25519}
 }
 
 
 
 #------------------------------------------------------------------
-# enable a color prompt with git repo awareness
-# temporarily change prompt color: pcol rand
+# GPG configuration - windsurf added
 #------------------------------------------------------------------
-function pcol() {
-    # Define color codes without escaping for the array
-    BOLD_CYAN='\e[1;36;40m'
-    BOLD_PURPLE='\e[1;35;40m'
-    RESET='\e[0m'
-    BOLD_GREEN='\e[0;32;40m'
-    BOLD_MAGENTA='\e[1;35;40m'
-    BOLD_YELLOW='\e[1;33;40m'
-    LIGHT_GRAY='\e[0;37;40m'
-    BOLD_RED='\e[1;31;40m'
-    BOLD_BLUE='\e[1;34;40m'
-    BOLD_WHITE='\e[1;37;40m'
-    LIGHT_RED='\e[0;31;40m'
-    LIGHT_GREEN='\e[0;32;40m'
-    LIGHT_YELLOW='\e[0;33;40m'
-    LIGHT_BLUE='\e[0;34;40m'
-    LIGHT_MAGENTA='\e[0;35;40m'
-    LIGHT_CYAN='\e[0;36;40m'
+# Set GPG TTY
+export GPG_TTY=$(tty)
 
-    # Create an array of colors
-    colors=(
-        "$BOLD_CYAN"
-        "$BOLD_PURPLE"
-        "$BOLD_GREEN"
-        "$BOLD_MAGENTA"
-        "$BOLD_YELLOW"
-        "$LIGHT_GRAY"
-        "$BOLD_RED"
-        "$BOLD_BLUE"
-        "$BOLD_WHITE"
-        "$LIGHT_RED"
-        "$LIGHT_GREEN"
-        "$LIGHT_YELLOW"
-        "$LIGHT_BLUE"
-        "$LIGHT_MAGENTA"
-        "$LIGHT_CYAN"
-    )
+# Ensure gpg-agent is running and using pinentry-tty
+export GPG_AGENT_INFO=""
+unset SSH_AGENT_PID
+if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
+    export SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
+fi
 
-    # if running in docker, add docker- to hostname and 🐳
-    HN_PREFIX=""
-    HN_SUFFIX=""
-    if [ -f /.dockerenv ]; then
-      HN_PREFIX="docker-"
-      HN_SUFFIX="🐳"
-    fi
-
-    # root should get '#'
-    # Character for prompt
-    test `id -u` -eq 0 && PROMPT_CHAR='#' || PROMPT_CHAR='\$'
-    PCHAR="${LIGHT_GRAY}${PROMPT_CHAR}${RESET}"
-
-    # Default color scheme
-    TIME_DATE="[${BOLD_CYAN}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${BOLD_CYAN}]${RESET}"
-    USER_HOST="[${BOLD_CYAN}\u@${BOLD_GREEN}${HN_PREFIX}\h ${HN_SUFFIX}${BOLD_YELLOW}\w${BOLD_CYAN}]${RESET}"
-
-    # Combine components into multi-line PS1 without escapes
-    PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
-
-    # Randomly choose colors for each component - run: pcol rand
-    if [ "$1" == "rand" ]; then
-        # Randomly choose colors for each component
-        RANDOM_COLOR_BRACKET=${colors[RANDOM % ${#colors[@]}]}
-        RANDOM_COLOR_DATE=${colors[RANDOM % ${#colors[@]}]}
-        RANDOM_COLOR_USER=${colors[RANDOM % ${#colors[@]}]}
-        RANDOM_COLOR_HOST=${colors[RANDOM % ${#colors[@]}]}
-        RANDOM_COLOR_DIR=${colors[RANDOM % ${#colors[@]}]}
-
-        # User-specific prompt components
-        TIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)${RANDOM_COLOR_BRACKET}]${RESET}"
-        USER_HOST="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_USER}\u${RANDOM_COLOR_HOST}@${HN_PREFIX}\h ${HN_SUFFIX}${RANDOM_COLOR_DIR}\w${RANDOM_COLOR_BRACKET}]${RESET}"
-
-        # for writing to the file, escape the functions
-        FTIME_DATE="${RANDOM_COLOR_BRACKET}[${RANDOM_COLOR_DATE}"'\$(date '+%I:%M') \$(date '+%D')\$(display_git_branch)'"${RANDOM_COLOR_BRACKET}]${RESET}"
-
-        # Combine components into PS1
-        PS1="\n${TIME_DATE}\n${USER_HOST}\n${PCHAR} "
-
-        # Write the PS1 configuration to ~/ps1.rename_me
-        {
-            # export to file
-            echo "BOLD_CYAN='$BOLD_CYAN'"
-            echo "BOLD_PURPLE='$BOLD_PURPLE'"
-            echo "RESET='$RESET'"
-            echo "BOLD_GREEN='$BOLD_GREEN'"
-            echo "BOLD_MAGENTA='$BOLD_MAGENTA'"
-            echo "BOLD_YELLOW='$BOLD_YELLOW'"
-            echo "LIGHT_GRAY='$LIGHT_GRAY'"
-            echo "BOLD_RED='$BOLD_RED'"
-            echo "BOLD_BLUE='$BOLD_BLUE'"
-            echo "BOLD_WHITE='$BOLD_WHITE'"
-            echo "LIGHT_RED='$LIGHT_RED'"
-            echo "LIGHT_GREEN='$LIGHT_GREEN'"
-            echo "LIGHT_YELLOW='$LIGHT_YELLOW'"
-            echo "LIGHT_BLUE='$LIGHT_BLUE'"
-            echo "LIGHT_MAGENTA='$LIGHT_MAGENTA'"
-            echo "LIGHT_CYAN='$LIGHT_CYAN'"
-            echo "colors=( \"\${BOLD_CYAN}\" \"\${BOLD_PURPLE}\" \"\${BOLD_GREEN}\" \"\${BOLD_MAGENTA}\" \"\${BOLD_YELLOW}\" \"\${LIGHT_GRAY}\" \"\${BOLD_RED}\" \"\${BOLD_BLUE}\" \"\${BOLD_WHITE}\" \"\${LIGHT_RED}\" \"\${LIGHT_GREEN}\" \"\${LIGHT_YELLOW}\" \"\${LIGHT_BLUE}\" \"\${LIGHT_MAGENTA}\" \"\${LIGHT_CYAN}\" )"
-            echo "export PS1=\"\n${FTIME_DATE}\n${USER_HOST}\n${PCHAR} \""
-        } > ~/ps1.rename_me
-    fi
-
-    # Export the PS1 variable
-    export PS1
-}
+# Start gpg-agent if not running
+gpg-agent --daemon 2> /dev/null
 
 
 #------------------------------------------------------------------
@@ -323,6 +362,7 @@ alias dil='docker image ls -a'
 # [system]
 alias dir="ls -lart --color=yes"
 alias tmush="tmux_share"
+
 # root login with ENV initialized
 alias sbl='sudo -i -u root /bin/bash --login'
 
@@ -341,9 +381,9 @@ alias sbl='sudo -i -u root /bin/bash --login'
 # uncomment to report on age of system password
 # check_password_age
 
-# uncomment to have a color prompt
-# pcol
 
 # uncomment if you renamed ~/ps1.rename_me to ~/ps1 after running 'pcol rand'
-# test -f ~/ps1 && { . ~/ps1; export PS1; } ||  pcol
+# test -f ~/ps1 && { . ~/ps1; export PS1; }
 
+# uncomment to have a color prompt
+# prom
