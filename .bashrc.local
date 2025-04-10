@@ -20,7 +20,7 @@ display_git_branch()
        note_indicator="📜"
    fi
 
-   test ! -z "$b" && echo -e "\033[1;0;40m $bcolor" ⭠ "$note_indicator$b\033[0;00;0m"
+   test ! -z "$b" && echo -e "\033[1;0;40m $bcolor" ⎇"$note_indicator$b\033[0;00;0m"
 }
 
 
