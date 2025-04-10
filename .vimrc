@@ -37,6 +37,9 @@ autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab " set local tab options
 " reset to default cursor color
 autocmd VimLeave * silent !echo -ne "\033]112\007"
 
+" trim whitespace from ends of lines. must be camelcase for vim
+command! TrimWhitespace %s/\s\+$//e
+
 " Cursor highlight color
 " Use an orange cursor in insert mode
 let &t_SI = "\<Esc>]12;orange\x7"
