@@ -45,6 +45,14 @@ To ensure that `~/.bashrc` is sourced with every bash shell, try:
   [ -f ~/.bashrc ] && . ~/.bashrc
   ```
 
+# system-wide configuration
+To apply a system-wide bash prompt for all users, in a similar way to the per-user configuration above, copy bashrc.local to a /etc/bash (or similar location), and instead use this in your ~/.bashrc as shown below. This doesn't enable the prompt automatically for all users. You must export `LC_USE_PROM=1` to your remote environment before connecting.  This variable will be carried over to the connected system and will be evaluated true/false to enable the colored prompt:
+```bash
+[ -f /etc/bash/bashrc.local ] && . /etc/bash/bashrc.local
+```
+* The `ps1` file will need to be placed in `/etc/bash` instead of the per-user $HOME location.
+
+
 # .vimrc
 The included `.vimrc` file can be symlinked to customize the default settings for Vim (Very Irritating, man).
 Key changes:

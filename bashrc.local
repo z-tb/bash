@@ -1,0 +1,390 @@
+#
+# user modify-able bashrc
+#
+
+#------------------------------------------------------------------
+# display git branch in prompt if cwd is a repo. color change if 
+# modifications present. use scroll emoji if git notes are present
+#------------------------------------------------------------------
+display_git_branch()
+{
+   bcolor="\033[0;30;42m" # normally black on green. yellow on red if mods
+   test $(is_branch_modified) -eq 1 && bcolor="\033[1;33;41m"
+
+   b="`git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'`"
+
+   # Check if there are notes in the repository
+   notes_present=$(git notes list 2> /dev/null | wc -l)
+   note_indicator=""
+   if [ "$notes_present" -gt 0 ]; then
+       note_indicator="📜"
+   fi
+
+   test ! -z "$b" && echo -e "\033[1;0;40m $bcolor" ⎇ "$note_indicator$b\033[0;00;0m"
+}
+
+
+#------------------------------------------------------------------
+# returns 1 if git branch is modified/dirty
+#------------------------------------------------------------------
+is_branch_modified()
+{
+   status=0
+   test -n "`git diff 2>/dev/null`" && status=1
+   echo $status
+}
+
+
+#------------------------------------------------------------------
+# for use with gpull/PS1/aliasse
+#------------------------------------------------------------------
+get_git_branch()
+{
+    git branch 2> /dev/null | grep '^*' |  sed -e '#^[^*]#d' -e 's#[*\(\) ]##g'
+}
+
+
+#------------------------------------------------------------------
+# pushd/popd - determine if directory stack has more than one entry
+#------------------------------------------------------------------
+get_dirstack_indicator() {
+    if [ ${#DIRSTACK[@]} -gt 1 ]; then
+        echo "📍"
+    else
+        echo ""
+    fi
+}
+
+#------------------------------------------------------------------
+# show success/fail status of last shell command
+#------------------------------------------------------------------
+display_last_command_status() {
+   
+   if [ $LAST_EXIT_STATUS -eq 0 ]; then
+      echo -e '\033[1;32;40m✔ \033[0m'
+   else
+      echo -e '\033[1;31;40m✗ \033[0m'
+   fi
+}
+
+#------------------------------------------------------------------
+# fancy prompt - use emojis for pushd/popd
+#------------------------------------------------------------------
+prom() {
+    # Create a prompt command to capture exit status
+    PROMPT_COMMAND='LAST_EXIT_STATUS=$?' 
+
+    # Define colors for various parts of prompt
+    #   Use existing color variables if defined, otherwise use defaults
+    BCOLOR=${BCOLOR:-"\[\033[1;36;40m\]"}   # Light cyan on black
+    TDCOLOR=${TDCOLOR:-"\[\033[0;31;40m\]"}  # Red on black
+    HCOLOR=${HCOLOR:-"\[\033[0;36;40m\]"}   # Dark cyan on black
+    PWDCOLOR=${PWDCOLOR:-"\[\033[1;36;40m\]"} # Light cyan on black
+    SYSCOLOR=${SYSCOLOR:-"\[\033[1;34;40m\]"} # Blue on black for system separator
+    RESET="\[\033[0m\]"          # Reset to default
+
+    # prompt character based on user
+    if [ $EUID -eq 0 ]; then
+        local USERCOLOR="\[\033[1;33;41m\]"  # Yellow on red background for root
+        local PROMPT_CHAR="#"
+    else
+        local USERCOLOR="\[\033[0;37;40m\]"  # White on black for regular user
+        local PROMPT_CHAR="$"
+    fi
+
+    # Set PS1 with initial value
+    # First line: [time dirstack_indicator git_status]
+    PS1="${BCOLOR}[${RESET}${TDCOLOR}\$(date '+%I:%M %m/%d/%y')${RESET}\$(display_git_branch)${BCOLOR}]${RESET}\n"
+
+    # Second line: [user@hostname pwd]
+    PS1+="${BCOLOR}[${RESET}\$(display_last_command_status)${USERCOLOR}\u${RESET}${SYSCOLOR}\$(is_docker '@')${HCOLOR}\h ${RESET}${PWDCOLOR}\w${RESET}${BCOLOR}\$(get_dirstack_indicator)]${RESET}\n"
+
+    # Third line: prompt character
+    PS1+="${PROMPT_CHAR} "
+}
+
+
+#------------------------------------------------------------------
+# if in a docker container, return the whale icon, otherwise whatever was passed
+#------------------------------------------------------------------
+is_docker()
+{
+    sys_sep="$1"
+    if [ -f /.dockerenv ]; then
+      sys_sep='🐳'
+    fi
+    echo $sys_sep
+}
+
+
+#------------------------------------------------------------------
+# randomize PS1 colors and save for later, if desired
+#------------------------------------------------------------------
+pcol_rand() {
+ # Function to generate a random color code
+    gen_random_color() {
+        local style=$1     # Style: 0=normal, 1=bold
+        local fg=$((RANDOM % 8 + 30))  # Random foreground (30-37)
+        echo "${style};${fg};40"       # Always using black background (40)
+    }
+
+    # Generate random colors for each part
+    local new_bcolor=$(gen_random_color 1)   # Bold color for brackets
+    local new_tdcolor=$(gen_random_color 0)  # Normal color for time/date
+    local new_hcolor=$(gen_random_color 0)   # Normal color for hostname
+    local new_pwdcolor=$(gen_random_color 1) # Bold color for current directory
+    local new_syscolor=$(gen_random_color 1) # Bold color for system separator
+
+    # Create the ps1.rename_me file with just the color definitions
+    cat > ~/ps1.rename_me << EOF
+# PS1 color settings - generated by pcol_rand() on $(date)
+# Source this file to apply these colors to your prompt
+
+# Unset any existing color variables first
+unset BCOLOR TDCOLOR HCOLOR PWDCOLOR SYSCOLOR
+
+# Color definitions for PS1 prompt
+export BCOLOR="\[\033[${new_bcolor}m\]"   # Random color for brackets
+export TDCOLOR="\[\033[${new_tdcolor}m\]"  # Random color for time/date
+export HCOLOR="\[\033[${new_hcolor}m\]"   # Random color for hostname
+export PWDCOLOR="\[\033[${new_pwdcolor}m\]" # Random color for current directory
+export SYSCOLOR="\[\033[${new_syscolor}m\]" # Random color for system separator
+
+# Call prompt function to apply the new colors
+prom
+EOF
+
+source ~/ps1.rename_me
+
+    echo "Randomized color settings saved to ~/ps1.rename_me"
+    echo "To apply, run: source ~/ps1.rename_me"
+    echo "To apply automatically at login, rename this file to ~/ps1"
+}
+
+
+#------------------------------------------------------------------
+# show git branches both remote and local
+#------------------------------------------------------------------
+git_show_branches() {
+    remote_branches="$(git ls-remote --heads origin)"
+    git branch -a
+    echo -e "\033[38;5;202m+++ REMOTE BRANCHES +++\033[0m"
+    echo -e "\033[38;5;208m$remote_branches\033[0m"
+}
+
+#------------------------------------------------------------------
+# count the number of updates in /var/cache/apt/archives and report
+# this can be run by hand, or called from a script
+#------------------------------------------------------------------
+pkg_update_report()
+{
+   local deb_count
+   deb_count=$(ls -1 /var/cache/apt/archives/*.deb 2>/dev/null | wc -l)
+
+   if [ "$deb_count" -gt 0 ]; then
+      echo -e "There are \e[92m$deb_count downloaded packages \e[0min the deb archive on this system.\e[0m"
+   fi
+}
+
+#------------------------------------------------------------------
+# report on age of current password
+# only works with local users
+#------------------------------------------------------------------
+check_password_age() {
+
+   # this won't work with some systems using AD auth since it requires sudo
+   test -n $(grep $(whoami) /etc/passwd &>/dev/null) || return
+
+   # Constants
+   age_warning_days=75
+   age_critical_days=90
+
+
+   local username="$1"
+   local verbose="$2" # pass -v to always report
+
+   # no username, assume the user running the function
+   test -z "$username" && username=$LOGNAME
+
+   # if -v passed as "$1", assume LOGNAME and verbose mode
+   if [ "$username" = "-v" ];then
+      username=$LOGNAME
+      verbose="-v"
+   fi
+
+   # Get the password aging information using chage
+   local password_info=$(chage -l "$username" 2>/dev/null)
+
+   if [[ -n "$password_info" ]]; then
+
+       # Extract the last password change date
+       local last_change=$(echo "$password_info" | grep "Last password change" | awk -F ': ' '{print $2}')
+
+       if [[ -n "$last_change" ]]; then
+           # Calculate the age of passwd in days
+           local current_date=$(date +%s)
+           local last_change_date=$(date -d "$last_change" +%s)
+           local age_seconds=$((current_date - last_change_date))
+           local age_days=$((age_seconds / 86400))  # 86400 seconds in a day
+
+           # Determine color based on age of pass
+           local color_code=""
+           if (( age_days > age_critical_days )); then
+               color_code="\033[91m"  # Red color
+           elif (( age_days > age_warning_days )); then
+               color_code="\033[93m"  # Yellow color
+           fi
+
+           # Determine if output should be printed
+           local output=false
+           if [[ "$verbose" == "-v" || age_days -gt $age_warning_days ]]; then
+               output=true
+           fi
+
+           # Print output if necessary
+           if [[ "$output" == true ]]; then
+               echo -e "${color_code}Current password age for user $username is approximately $age_days days.\033[0m"
+           fi
+
+       else
+           echo "Error: Failed to retrieve last password change date."
+       fi
+   else
+       echo "Error: User $username not found or unable to retrieve password aging information."
+   fi
+}
+
+
+
+#------------------------------------------------------------------
+# create a tmux session for terminal sharing between logged-in users
+#------------------------------------------------------------------
+tmux_share() {
+
+    # Define color codes
+    local GREEN='\033[0;32m'
+    local YELLOW='\033[1;33m'
+    local CYAN='\033[0;36m'
+    local NC='\033[0m' # No Color
+
+    # Generate a random 4-digit number
+    local random_prefix=$(shuf -i 1000-9999 -n 1)
+
+    # Create the session name using the random prefix
+    local session_name="shared-${random_prefix}"
+
+    # Print message with color
+    echo -e "${CYAN}Starting new shared tmux session...${NC}"
+
+    # Create a new tmux session in detached mode
+    tmux new-session -d -s "$session_name"
+
+    # Print the command to connect to the shared session with color
+    echo -e "${YELLOW}To connect to the shared tmux session, use the following command:${NC}"
+    echo -e "${GREEN}tmux attach-session -t $session_name${NC}"
+}
+
+
+#------------------------------------------------------------------
+# launch ssh-agent, add ssh keys to ssh-agent
+# *shad already defined in /etc/bashrc
+#------------------------------------------------------------------
+shadd()
+{
+   test -z "$(find ~/.ssh -type f \( -iname '*rsa*' -o -iname '*ed25519*' \) ! -iname '*.pub')" && return
+   eval "$(ssh-agent -s)"
+   ssh-add ~/.ssh/*_{rsa,ed25519}
+}
+
+
+
+#------------------------------------------------------------------
+# GPG configuration - windsurf added
+#------------------------------------------------------------------
+# Set GPG TTY
+export GPG_TTY=$(tty)
+
+# Ensure gpg-agent is running and using pinentry-tty
+export GPG_AGENT_INFO=""
+unset SSH_AGENT_PID
+if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
+    export SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
+fi
+
+# Start gpg-agent if not running
+gpg-agent --daemon 2> /dev/null
+
+
+#------------------------------------------------------------------
+# set path explicity to add $HOME/bin if it exists
+# this allows for custom user scripts to be placed in the user's path
+#------------------------------------------------------------------
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+test -d $HOME/bin && PATH=$PATH:$HOME/bin
+export PATH
+
+#------------------------------------------------------------------
+# ubuntu default is nano
+#------------------------------------------------------------------
+# use vim or nano for things like cron and git commits
+export EDITOR=vim
+
+#------------------------------------------------------------------
+# disable caps lock as I always inadvertently hit it when entering masked passwords
+# also see: xmodmap ~/.Xmodmap
+# NOTE: causes error message over ssh - only applies to X session/terminal
+#------------------------------------------------------------------
+if [ -n "$DISPLAY" ]; then
+   /usr/bin/setxkbmap -option ctrl:nocaps
+fi
+
+#------------------------------------------------------------------
+# aliases
+#------------------------------------------------------------------
+# [ssh]
+# a shortcut for use with temporary hosts
+alias sshoi='ssh -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
+
+
+# [git]
+alias gbr="git_show_branches"
+alias gco="git checkout"
+alias gst="git status -s"
+alias gls="git ls-tree --full-tree -r --name-only HEAD"
+alias gpull='git pull origin `get_git_branch`'
+alias gpush='git push origin `get_git_branch`; git push origin --tags'
+alias glog='git log --pretty --oneline'
+
+# [docker]
+alias dcl='docker container ls -a'
+alias dil='docker image ls -a'
+
+# [system]
+alias dir="ls -lart --color=yes"
+alias tmush="tmux_share"
+
+# root login with ENV initialized
+alias sbl='sudo -i -u root /bin/bash --login'
+
+# -------------------------------------------------------------------
+
+# your timezone - run tzselect command if you don't know
+export TZ="America/Chicago"
+# export TZ="America/New_York"
+# export TZ='America/Detroit'
+# export TZ='America/Denver'
+# export TZ='America/Los_Angeles'
+
+# uncomment to run the update report on login
+# pkg_update_report
+
+# uncomment to report on age of system password
+# check_password_age
+
+# system wide - place the bash directory in /etc/bash (or other system accessbile location)
+test -f /etc/bash/ps1 && { . /etc/bash/ps1; export PS1; }
+
+# uncomment to have a color prompt when ssh environment contains "LC_USE_PROM"
+# from source host: export LC_USE_PROM=1; ssh remote_host
+# to turn back off: export LC_USER_PROM=; ssh remote_host
+test -n "$LC_USE_PROM" && prom
