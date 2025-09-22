@@ -24,6 +24,46 @@ display_git_branch()
 }
 
 
+
+#------------------------------------------------------------------
+# show all git notes - solarized background as arg1
+#------------------------------------------------------------------
+git_show_notes_all() {
+    local theme="${1:-default}"
+
+    if [[ "$theme" == "solarized" ]]; then
+        CYAN="\033[38;5;37m"      # Solarized Cyan
+        YELLOW="\033[38;5;136m"   # Solarized Yellow
+        SILVER="\033[38;5;244m"   # Solarized Base0 gray
+    else
+        CYAN="\033[1;36m"         # Bright cyan
+        YELLOW="\033[1;33m"       # Yellow
+        SILVER="\033[38;5;234m"   # Silver (bright black/gray)
+    fi
+    RESET="\033[0m"
+
+    git notes list | while read note commit; do
+        commit_date=$(git show -s --format=%cr $commit)
+        commit_author=$(git show -s --format='%an <%ae>' $commit)
+        commit_title=$(git show -s --format=%s $commit)
+        branches=$(git branch --contains $commit | sed 's/^[* ]*//;s/$/, /' | tr -d '\n' | sed 's/, $//')
+
+        echo -e "${YELLOW}Commit :${CYAN}$commit${RESET}"
+        echo -e "${YELLOW}Date   :${SILVER}$commit_date${RESET}"
+        echo -e "${YELLOW}Author :${SILVER}$commit_author${RESET}"
+        echo -e "${YELLOW}Title  :${SILVER}$commit_title${RESET}"
+        echo -e "${YELLOW}Branch :${SILVER}${branches:-<none>} ${RESET}"
+
+        echo -e "${YELLOW}Note:${RESET}"
+        git notes show $commit | while IFS= read -r line; do
+            echo -e "${SILVER}${line}${RESET}"
+        done
+
+        echo
+    done
+}
+
+
 #------------------------------------------------------------------
 # returns 1 if git branch is modified/dirty
 #------------------------------------------------------------------
@@ -354,6 +394,7 @@ alias gls="git ls-tree --full-tree -r --name-only HEAD"
 alias gpull='git pull origin `get_git_branch`'
 alias gpush='git push origin `get_git_branch`; git push origin --tags'
 alias glog='git log --pretty --oneline'
+alias gnt='git_show_notes_all solarized'
 
 # [docker]
 alias dcl='docker container ls -a'
