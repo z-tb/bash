@@ -53,3 +53,30 @@ set modeline
 
 " Highlight search results
 set hlsearch
+
+" line numbers
+set number
+highlight LineNr ctermfg=DarkGrey guifg=#A9A9A9
+
+
+" Visualize trailing whitespace with ASCII 176 (░ block)
+set list listchars=trail:▓,tab:▸·
+
+" Toggle whitespace visibility with <leader>l (usually \l)
+nnoremap <leader>l :set list!<CR>
+
+" F5: Remove all trailing whitespace (simple version)
+nnoremap <F5> :%s/\s\+$//e<CR>
+
+" Advanced F5: Preserve cursor position
+function! StripTrailingWhitespace()
+  let l = line(".")
+  let c = col(".")
+  %s/\s\+$//e
+  call cursor(l, c)
+endfunction
+nnoremap <F5> :call StripTrailingWhitespace()<CR>
+
+" Toggle absolute line numbers (visible/invisible) with F4
+nnoremap <F4> :set number!<CR>
+

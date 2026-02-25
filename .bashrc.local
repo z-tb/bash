@@ -378,6 +378,20 @@ if [ -n "$DISPLAY" ]; then
    /usr/bin/setxkbmap -option ctrl:nocaps
 fi
 
+
+#------------------------------------------------------------------
+# export ANSIBLE_INVENTORY if you want to use a path to an inventory
+# or alternative inventory instead
+#------------------------------------------------------------------
+ansh() {
+  local host="$1"
+  shift
+
+  local inv="${ANSIBLE_INVENTORY:-local.yml}"
+
+  ansible "$host" -i "$inv" -m shell -a "$*"
+}
+
 #------------------------------------------------------------------
 # aliases
 #------------------------------------------------------------------
@@ -417,14 +431,31 @@ alias sbl='sudo -i -u root /bin/bash --login'
 # export TZ='America/Los_Angeles'
 
 # uncomment to run the update report on login
-# pkg_update_report
+pkg_update_report
 
 # uncomment to report on age of system password
-# check_password_age
-
+check_password_age
 
 # uncomment if you renamed ~/ps1.rename_me to ~/ps1 after running 'pcol rand'
-# test -f ~/ps1 && { . ~/ps1; export PS1; }
+test -f ~/ps1 && { . ~/ps1; export PS1; }
 
 # uncomment to have a color prompt
-# prom
+prom
+
+# testing keychain
+# sudo apt update && apt install keychain
+if command -v keychain >/dev/null 2>&1; then
+  # Add whatever keys you want it to include...
+  keychain --quiet --eval --agents ssh id_ed25519 
+  source ~/.keychain/$(hostname -s)-sh
+fi
+
+# run xbanish if installed and not running - hides X cursor when typing
+if command -v xbanish >/dev/null 2>&1; then
+   pgrep -x xbanish >/dev/null 2>&1 || { xbanish & }
+fi
+
+# ssh preserves LC_ environment variables on the remotes. This variable is used to 
+# signal the color prompt should be used on login. This allows for individual prefs
+# on things like the root account
+export LC_USE_PROM=1
