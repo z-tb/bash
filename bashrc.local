@@ -272,16 +272,20 @@ tmux_share() {
 
     # Create the session name using the random prefix
     local session_name="shared-${random_prefix}"
+    local socket_path="/tmp/tmux-shared-${random_prefix}"
 
     # Print message with color
     echo -e "${CYAN}Starting new shared tmux session...${NC}"
 
-    # Create a new tmux session in detached mode
-    tmux new-session -d -s "$session_name"
+    # Create session using a world-accessible socket
+    tmux -S "$socket_path" new-session -d -s "$session_name"
+
+    # Make the socket accessible to other users
+    chmod 777 "$socket_path"
 
     # Print the command to connect to the shared session with color
     echo -e "${YELLOW}To connect to the shared tmux session, use the following command:${NC}"
-    echo -e "${GREEN}tmux attach-session -t $session_name${NC}"
+    echo -e "${GREEN}tmux -S $socket_path attach-session -t $session_name${NC}"
 }
 
 
