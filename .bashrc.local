@@ -3,7 +3,7 @@
 #
 
 #------------------------------------------------------------------
-# display git branch in prompt if cwd is a repo. color change if 
+# display git branch in prompt if cwd is a repo. color change if
 # modifications present. use scroll emoji if git notes are present
 #------------------------------------------------------------------
 display_git_branch()
@@ -99,7 +99,7 @@ get_dirstack_indicator() {
 # show success/fail status of last shell command
 #------------------------------------------------------------------
 display_last_command_status() {
-   
+
    if [ $LAST_EXIT_STATUS -eq 0 ]; then
       echo -e '\033[1;32;40m✔ \033[0m'
    else
@@ -112,7 +112,7 @@ display_last_command_status() {
 #------------------------------------------------------------------
 prom() {
     # Create a prompt command to capture exit status
-    PROMPT_COMMAND='LAST_EXIT_STATUS=$?' 
+    PROMPT_COMMAND='LAST_EXIT_STATUS=$?'
 
     # Define colors for various parts of prompt
     #   Use existing color variables if defined, otherwise use defaults
@@ -442,20 +442,48 @@ test -f ~/ps1 && { . ~/ps1; export PS1; }
 # uncomment to have a color prompt
 prom
 
-# testing keychain
-# sudo apt update && apt install keychain
+# testing keychain between potential work hours
 if command -v keychain >/dev/null 2>&1; then
-  # Add whatever keys you want it to include...
-  keychain --quiet --eval --agents ssh id_ed25519 
-  source ~/.keychain/$(hostname -s)-sh
+    # =====================================================
+    # SMART SSH AGENT - Work Hours Only (6AM-9PM)
+    # Single passphrase → All terminals until 9PM max
+    # =====================================================
+    HOUR=$(date +%H)
+    HOUR_START=6
+    HOUR_END=21
+
+    if [ "$HOUR" -ge ${HOUR_START} ] && [ "$HOUR" -lt ${HOUR_END} ]; then
+        # Start/reuse agent with dynamic timeout (expires at 9PM)
+        MINUTES_TO_9PM=$(( (HOUR_END*60) - (HOUR*60) ))
+        TIMEOUT_MIN=$(( MINUTES_TO_9PM < 480 ? MINUTES_TO_9PM : 480 ))
+        eval "$(keychain --eval --quiet --agents ssh --timeout ${TIMEOUT_MIN})"
+
+        # CASE 1: First terminal - no keys loaded yet
+        if ! ssh-add -l >/dev/null 2>&1; then
+            ssh-add ~/.ssh/id_* ~/.ssh/id_dropbear 2>/dev/null || true
+            NUM_KEYS=$(ssh-add -l 2>/dev/null | wc -l)
+            echo "🔑 SSH unlocked: ${NUM_KEYS} keys until $(date -d "${TIMEOUT_MIN} minutes" +%I:%M%p) (ssh-add -D to remove)"
+
+        # CASE 2: New tab - keys exist, show status only
+        elif [ -n "$SSH_AUTH_SOCK" ]; then
+            NUM_KEYS=$(ssh-add -l 2>/dev/null | wc -l)
+            EXPIRY=$(date -d "${TIMEOUT_MIN} minutes" +%I:%M%p 2>/dev/null || echo "soon")
+            echo "🔐 SSH ready: ${NUM_KEYS} keys until ${EXPIRY}"
+        fi
+
+    else
+        echo "⏰ Outside work hours (${HOUR_START}:00-${HOUR_END}:00)"
+    fi
 fi
+
+
 
 # run xbanish if installed and not running - hides X cursor when typing
 if command -v xbanish >/dev/null 2>&1; then
    pgrep -x xbanish >/dev/null 2>&1 || { xbanish & }
 fi
 
-# ssh preserves LC_ environment variables on the remotes. This variable is used to 
+# ssh preserves LC_ environment variables on the remotes. This variable is used to
 # signal the color prompt should be used on login. This allows for individual prefs
 # on things like the root account
 export LC_USE_PROM=1
