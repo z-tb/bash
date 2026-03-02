@@ -448,13 +448,13 @@ if command -v keychain >/dev/null 2>&1; then
     # SMART SSH AGENT - Work Hours Only (6AM-9PM)
     # Single passphrase → All terminals until 9PM max
     # =====================================================
-    HOUR=$(date +%H)
+    HOUR=$(date +%-H)
     HOUR_START=6
     HOUR_END=21
 
     if [ "$HOUR" -ge ${HOUR_START} ] && [ "$HOUR" -lt ${HOUR_END} ]; then
         # Start/reuse agent with dynamic timeout (expires at 9PM)
-        MINUTES_TO_9PM=$(( (HOUR_END*60) - (HOUR*60) ))
+        MINUTES_TO_9PM=$(( (HOUR_END * 60) - (HOUR * 60) ))
         TIMEOUT_MIN=$(( MINUTES_TO_9PM < 480 ? MINUTES_TO_9PM : 480 ))
         eval "$(keychain --eval --quiet --agents ssh --timeout ${TIMEOUT_MIN})"
 
