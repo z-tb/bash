@@ -112,7 +112,7 @@ display_last_command_status() {
 #------------------------------------------------------------------
 prom() {
     # Create a prompt command to capture exit status
-    PROMPT_COMMAND='LAST_EXIT_STATUS=$?' 
+    PROMPT_COMMAND='LAST_EXIT_STATUS=$?'
 
     # Define colors for various parts of prompt
     #   Use existing color variables if defined, otherwise use defaults
@@ -122,6 +122,18 @@ prom() {
     PWDCOLOR=${PWDCOLOR:-"\[\033[1;36;40m\]"} # Light cyan on black
     SYSCOLOR=${SYSCOLOR:-"\[\033[1;34;40m\]"} # Blue on black for system separator
     RESET="\[\033[0m\]"          # Reset to default
+
+    # conda prompt coloring
+    if [ -n "${CONDA_DEFAULT_ENV}" ]; then
+        if [ "${CONDA_DEFAULT_ENV}" = "base" ]; then
+            CONDA="\[\033[1;30;42m\](${CONDA_DEFAULT_ENV})"
+        else
+            CONDA="\[\033[0;30;47m\](${CONDA_DEFAULT_ENV})"
+        fi
+        CONDA="${CONDA}${RESET} "
+    else
+        CONDA=""
+    fi
 
     # prompt character based on user
     if [ $EUID -eq 0 ]; then
@@ -134,7 +146,7 @@ prom() {
 
     # Set PS1 with initial value
     # First line: [time dirstack_indicator git_status]
-    PS1="${BCOLOR}[${RESET}${TDCOLOR}\$(date '+%I:%M %m/%d/%y')${RESET}\$(display_git_branch)${BCOLOR}]${RESET}\n"
+    PS1="${BCOLOR}[${CONDA}${RESET}${TDCOLOR}\$(date '+%I:%M %m/%d/%y')${RESET}\$(display_git_branch)${BCOLOR}]${RESET}\n"
 
     # Second line: [user@hostname pwd]
     PS1+="${BCOLOR}[${RESET}\$(display_last_command_status)${USERCOLOR}\u${RESET}${SYSCOLOR}\$(is_docker '@')${HCOLOR}\h ${RESET}${PWDCOLOR}\w${RESET}${BCOLOR}\$(get_dirstack_indicator)]${RESET}\n"
