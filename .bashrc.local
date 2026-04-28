@@ -393,17 +393,58 @@ ansh() {
 }
 
 #------------------------------------------------------------------
+# wrapper for vim -- prompt file is unwritable
+#------------------------------------------------------------------
+vim() {
+    local f
+    local -a bad=()
+
+    for f in "$@"; do
+        [[ "$f" == -* ]] && continue
+        [[ -e "$f" && ! -w "$f" ]] && bad+=("$f")
+    done
+
+    if (( ${#bad[@]} )); then
+        printf "\n\033[1;33mNon-writable files:\033[0m %s\n" "${bad[*]}"
+        printf "Continue? [Enter=yes, s=sudo, n=no]: "
+        read -r choice
+        choice="${choice,,}"
+
+        case "$choice" in
+            ""|y|yes)
+                ;;
+            s)
+                sudo vim "$@"
+                return
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    fi
+
+    command vim "$@"
+}
+
+#------------------------------------------------------------------
 # aliases
 #------------------------------------------------------------------
 # [ssh]
 # a shortcut for use with temporary hosts
 alias sshoi='ssh -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
+# shortcut for logging into hosts that are cloned vms
+alias ssho='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$@"'
+# and rsync...
+alias rsynco='rsync -avz --progress -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" "$@"'
+
 
 
 # [git]
 alias gbr="git_show_branches"
-alias gco="git checkout"
-alias gst="git status -s"
+alias gco="git switch"
+#alias gst="git status -s"
+# also show unpushed commits
+alias gst='git status -s && git log --oneline @{u}..'
 alias gls="git ls-tree --full-tree -r --name-only HEAD"
 alias gpull='git pull origin `get_git_branch`'
 alias gpush='git push origin `get_git_branch`; git push origin --tags'
@@ -421,10 +462,15 @@ alias tmush="tmux_share"
 # root login with ENV initialized
 alias sbl='sudo -i -u root /bin/bash --login'
 
+alias vi="vim"
+
+# allow tab completion to work with gco
+# __git_complete gco _git_checkout
+
 # -------------------------------------------------------------------
 
 # your timezone - run tzselect command if you don't know
-# export TZ="America/Chicago"
+export TZ="America/Chicago"
 # export TZ="America/New_York"
 # export TZ='America/Detroit'
 # export TZ='America/Denver'
@@ -442,40 +488,65 @@ test -f ~/ps1 && { . ~/ps1; export PS1; }
 # uncomment to have a color prompt
 prom
 
+
 # testing keychain between potential work hours
-if command -v keychain >/dev/null 2>&1; then
-    # =====================================================
-    # SMART SSH AGENT - Work Hours Only (6AM-9PM)
-    # Single passphrase → All terminals until 9PM max
-    # =====================================================
-    HOUR=$(date +%-H)
-    HOUR_START=6
-    HOUR_END=21
+#
+#
+# # sudo apt update && apt install keychain
+#if command -v keychain >/dev/null 2>&1; then
+#  # Add whatever keys you want it to include...
+#  keychain --eval --agents ssh gh_bitstrike id_ecdsa id_ed25519 id_rsa
+#  # then, start the agent
+#  source ~/.keychain/$(hostname -s)-sh
+#fi
+#
+load_ssh_keys()
+{
+   if command -v keychain >/dev/null 2>&1; then
+       # =====================================================
+       # SMART SSH AGENT - Work Hours Only (6AM-9PM)
+       # Single passphrase → All terminals until 9PM max
+       # =====================================================
+       _kc_grn=$(tput setaf 2); _kc_cyn=$(tput setaf 6)
+       _kc_blu=$(tput setaf 4); _kc_pur=$(tput setaf 5); _kc_rst=$(tput sgr0)
+       HOUR=$(date +%-H)
+       HOUR_START=6
+       HOUR_END=21
+       SSH_LOAD_TIME_FILE="${XDG_RUNTIME_DIR:-/tmp}/ssh-load-time"
 
-    if [ "$HOUR" -ge ${HOUR_START} ] && [ "$HOUR" -lt ${HOUR_END} ]; then
-        # Start/reuse agent with dynamic timeout (expires at 9PM)
-        MINUTES_TO_9PM=$(( (HOUR_END * 60) - (HOUR * 60) ))
-        TIMEOUT_MIN=$(( MINUTES_TO_9PM < 480 ? MINUTES_TO_9PM : 480 ))
-        eval "$(keychain --eval --quiet --agents ssh --timeout ${TIMEOUT_MIN})"
+       if [ "$HOUR" -ge ${HOUR_START} ] && [ "$HOUR" -lt ${HOUR_END} ]; then
+           # Start/reuse agent with dynamic timeout (expires at 9PM)
+           MINUTES_TO_9PM=$(( (HOUR_END * 60) - (HOUR * 60) ))
+           TIMEOUT_MIN=$(( MINUTES_TO_9PM < 480 ? MINUTES_TO_9PM : 480 ))
+           eval "$(keychain --eval --quiet --agents ssh --timeout ${TIMEOUT_MIN})"
 
-        # CASE 1: First terminal - no keys loaded yet
-        if ! ssh-add -l >/dev/null 2>&1; then
-            ssh-add ~/.ssh/id_* ~/.ssh/id_dropbear 2>/dev/null || true
-            NUM_KEYS=$(ssh-add -l 2>/dev/null | wc -l)
-            echo "🔑 SSH unlocked: ${NUM_KEYS} keys until $(date -d "${TIMEOUT_MIN} minutes" +%I:%M%p) (ssh-add -D to remove)"
+           # First terminal - no keys loaded yet
+           if ! ssh-add -l >/dev/null 2>&1; then
+               ssh-add ~/.ssh/id_* 2>/dev/null || true
+               date +%s > "$SSH_LOAD_TIME_FILE"
+               NUM_KEYS=$(ssh-add -l 2>/dev/null | wc -l)
+               echo " ${_kc_grn}*${_kc_rst} SSH unlocked: ${_kc_pur}${NUM_KEYS} keys${_kc_rst} until ${_kc_cyn}$(date -d "${TIMEOUT_MIN} minutes" +%I:%M%p)${_kc_rst} (${_kc_blu}ssh-add -D${_kc_rst} to remove)"
 
-        # CASE 2: New tab - keys exist, show status only
-        elif [ -n "$SSH_AUTH_SOCK" ]; then
-            NUM_KEYS=$(ssh-add -l 2>/dev/null | wc -l)
-            EXPIRY=$(date -d "${TIMEOUT_MIN} minutes" +%I:%M%p 2>/dev/null || echo "soon")
-            echo "🔐 SSH ready: ${NUM_KEYS} keys until ${EXPIRY}"
-        fi
 
-    else
-        echo "⏰ Outside work hours (${HOUR_START}:00-${HOUR_END}:00)"
-    fi
-fi
+           # New tab - keys exist, show status only
+           elif [ -n "$SSH_AUTH_SOCK" ]; then
+               NUM_KEYS=$(ssh-add -l 2>/dev/null | wc -l)
+               if [ ! -f "$SSH_LOAD_TIME_FILE" ]; then
+                   date +%s > "$SSH_LOAD_TIME_FILE"
+               fi
+               LOAD_TIME=$(cat "$SSH_LOAD_TIME_FILE")
+               EXPIRY=$(date -d "@$(( LOAD_TIME + TIMEOUT_MIN * 60 ))" +%I:%M%p)
+               echo " ${_kc_grn}*${_kc_rst} SSH ready: ${_kc_pur}${NUM_KEYS} keys${_kc_rst} until ${_kc_cyn}${EXPIRY}${_kc_rst}"
+           fi
 
+       else
+           echo " ${_kc_blu}*${_kc_rst} Outside work hours ${_kc_pur}(${HOUR_START}:00-${HOUR_END}:00)${_kc_rst}"
+       fi
+   fi
+}
+
+#
+load_ssh_keys
 
 
 # run xbanish if installed and not running - hides X cursor when typing
@@ -487,3 +558,15 @@ fi
 # signal the color prompt should be used on login. This allows for individual prefs
 # on things like the root account
 export LC_USE_PROM=1
+
+# cd some/path/toafile.txt
+cdf() {
+    if [ -n "$1" ] && [ -f "$1" ]; then
+        local dir
+        dir=$(dirname "$1")
+        echo "fatfinger for $dir"
+        builtin cd "$dir"
+    else
+        builtin cd "$@"
+    fi
+}
