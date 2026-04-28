@@ -80,3 +80,8 @@ nnoremap <F5> :call StripTrailingWhitespace()<CR>
 " Toggle absolute line numbers (visible/invisible) with F4
 nnoremap <F4> :set number!<CR>
 
+" utf-8 ascii instead of @�~T~@�~T~@�
+set encoding=utf-8
+set fileencoding=utf-8
+set termguicolors
+syntax on
