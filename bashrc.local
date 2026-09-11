@@ -370,6 +370,9 @@ alias tmush="tmux_share"
 # root login with ENV initialized
 alias sbl='sudo -i -u root /bin/bash --login'
 
+# because systemd follow no known unix philosophy
+alias sc="systemctl"
+
 # -------------------------------------------------------------------
 
 # your timezone - run tzselect command if you don't know
