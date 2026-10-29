@@ -53,3 +53,25 @@ set modeline
 
 " Highlight search results
 set hlsearch
+
+
+" Visualize trailing whitespace with ASCII 176 (░ block)
+set list listchars=trail:▓,tab:▸·
+
+" Toggle whitespace visibility with <leader>l (usually \l)
+nnoremap <leader>l :set list!<CR>
+
+" F5: Remove all trailing whitespace (simple version)
+nnoremap <F5> :%s/\s\+$//e<CR>
+
+" Advanced F5: Preserve cursor position
+function! StripTrailingWhitespace()
+  let l = line(".")
+  let c = col(".")
+  %s/\s\+$//e
+  call cursor(l, c)
+endfunction
+nnoremap <F5> :call StripTrailingWhitespace()<CR>
+
+
+" Prompt for elevated permissions or warning on read-only files
