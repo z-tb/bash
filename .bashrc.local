@@ -3,6 +3,31 @@
 #
 
 #------------------------------------------------------------------
+# point SSH_AUTH_SOCK at a private shared agent instead of gpg-agent
+# or gnome-keyring, which refuse keys added with ssh-add
+# a forwarded agent (any other socket) is left alone
+#------------------------------------------------------------------
+use_own_agent()
+{
+    local sock="${XDG_RUNTIME_DIR:-$HOME/.ssh}/ssh-agent.sock"
+
+    case "$SSH_AUTH_SOCK" in
+        ""|*gnupg*|*keyring*|"$sock") ;;
+        *) return 0 ;;
+    esac
+
+    export SSH_AUTH_SOCK="$sock"
+
+    # start the agent only if nothing is listening on the socket
+    ssh-add -l >/dev/null 2>&1
+    if [ $? -eq 2 ]; then
+        rm -f "$sock"
+        ssh-agent -a "$sock" >/dev/null
+    fi
+}
+
+
+#------------------------------------------------------------------
 # colored checksum
 #------------------------------------------------------------------
  csum() {
@@ -171,17 +196,23 @@ prom() {
 
 
 #------------------------------------------------------------------
-# if in a docker container, return the whale icon, otherwise whatever was passed
+# if in a docker container, return the whale icon, otherwise whatever
+# was passed. siren if the host docker socket is mounted in the container
 #------------------------------------------------------------------
 is_docker()
 {
     sys_sep="$1"
-    if [ -f /.dockerenv ]; then
-      sys_sep='🐳'
-    fi
-    echo $sys_sep
-}
 
+    if [ -f /.dockerenv ]; then
+        sys_sep='🐳'
+    fi
+
+    if [ -S /var/run/docker.sock ]; then
+        sys_sep='🚨'
+    fi
+
+    echo "$sys_sep"
+}
 
 #------------------------------------------------------------------
 # randomize PS1 colors and save for later, if desired
@@ -357,24 +388,43 @@ tmux_share() {
 
 
 #------------------------------------------------------------------
-# launch ssh-agent, add ssh keys to ssh-agent
-# *shad already defined in /etc/bashrc
+# load every ~/.ssh/id_* key that is not already in the agent
+# all keys share one passphrase, which is prompted for only once
 #------------------------------------------------------------------
-shadd() {
-    # 0 = keys loaded, 1 = agent running but empty, 2 = no usable agent
-    ssh-add -l >/dev/null 2>&1
-    local rc=$?
+shadd()
+{
+    local pub key fp loaded askpass pass rc=0 todo=()
 
-    [ $rc -eq 0 ] && return 0
+    use_own_agent
+    loaded=$(ssh-add -l 2>/dev/null)
 
-    if [ $rc -eq 2 ]; then
-        eval "$(ssh-agent -s)" >/dev/null
-    fi
+    # collect only the keys that are missing from the agent
+    for pub in ~/.ssh/id_*.pub; do
+        key="${pub%.pub}"
+        [ -f "$key" ] || continue
+        fp=$(ssh-keygen -lf "$pub" | awk '{print $2}')
+        grep -qF "$fp" <<< "$loaded" && continue
+        todo+=("$key")
+    done
 
-    local keys=()
-    mapfile -t keys < <(find ~/.ssh -type f \( -name 'id_rsa*' -o -name 'id_ed25519*' \) ! -name '*.pub')
+    [ ${#todo[@]} -eq 0 ] && return 0
 
-    [ ${#keys[@]} -gt 0 ] && ssh-add "${keys[@]}"
+    # prompt once, hand the passphrase to ssh-add through an askpass helper
+    read -rsp "Passphrase for ${#todo[@]} ssh key(s): " pass
+    echo
+
+    askpass=$(mktemp)
+    printf '#!/bin/sh\nprintf "%%s\\n" "$SHADD_PASS"\n' > "$askpass"
+    chmod 700 "$askpass"
+
+    for key in "${todo[@]}"; do
+        SHADD_PASS="$pass" SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force \
+            ssh-add "$key" </dev/null || rc=1
+    done
+
+    rm -f "$askpass"
+    unset pass
+    return $rc
 }
 
 #------------------------------------------------------------------
@@ -405,24 +455,11 @@ mdcat()
    python3 -c "import sys, pathlib, rich.console, rich.markdown; rich.console.Console().print(rich.markdown.Markdown(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')))" "$@"
 }
 
-
-
 #------------------------------------------------------------------
-# GPG configuration - windsurf added
+# GPG configuration - gopass/pinentry only, ssh is handled by shadd
+# gpg-agent starts on demand, so no explicit --daemon is needed
 #------------------------------------------------------------------
-# Set GPG TTY
 export GPG_TTY=$(tty)
-
-# Ensure gpg-agent is running and using pinentry-tty
-export GPG_AGENT_INFO=""
-unset SSH_AGENT_PID
-if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
-    export SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
-fi
-
-# Start gpg-agent if not running
-gpg-agent --daemon 2> /dev/null
-
 
 #------------------------------------------------------------------
 # set path explicity to add $HOME/bin if it exists
@@ -516,6 +553,9 @@ alias sbl='sudo -i -u root /bin/bash --login'
 
 # uncomment if you renamed ~/ps1.rename_me to ~/ps1 after running 'pcol rand'
 test -f ~/ps1 && { . ~/ps1; export PS1; }
+
+# setup SSH_AUTH_SOCK
+use_own_agent
 
 # uncomment to have a color prompt
 prom
