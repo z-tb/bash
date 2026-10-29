@@ -205,10 +205,10 @@ is_docker()
 
     if [ -f /.dockerenv ]; then
         sys_sep='🐳'
-    fi
 
-    if [ -S /var/run/docker.sock ]; then
-        sys_sep='🚨'
+      if [ -S /var/run/docker.sock ]; then
+         sys_sep='🚨'
+      fi
     fi
 
     echo "$sys_sep"
